@@ -75,7 +75,7 @@ def test_game_add_message():
 def test_load_tileset_file_exists(tmp_path, monkeypatch):
     """Test load_tileset when the tileset file exists"""
     # Create a dummy tileset in the tmp_path
-    tileset_file = tmp_path / "roguelike_tileset.png"
+    tileset_file = tmp_path / "deja10x10_gs_tc.png"
     create_tileset(filename=str(tileset_file), tile_size=16)
     
     # Use monkeypatch to make pathlib.Path(__file__).parent resolve to tmp_path
@@ -111,3 +111,13 @@ def test_load_tileset_file_missing(tmp_path, monkeypatch):
     game = Game()
     tileset = game.load_tileset()
     assert tileset is None
+
+
+def test_load_real_tileset():
+    """Test load_tileset with the actual deja10x10_gs_tc.png file in the repository"""
+    game = Game()
+    # Ensure the real file actually exists in parent folder, which it does in our workspace
+    tileset = game.load_tileset()
+    assert tileset is not None
+    assert isinstance(tileset, tcod.tileset.Tileset)
+

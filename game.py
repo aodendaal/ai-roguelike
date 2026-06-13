@@ -337,7 +337,7 @@ class Game:
         """Try to load custom tileset, fall back to default if not available"""
         try:
             import pathlib
-            tileset_path = pathlib.Path(__file__).parent / "roguelike_tileset.png"
+            tileset_path = pathlib.Path(__file__).parent / "deja10x10_gs_tc.png"
             if tileset_path.exists():
                 return tcod.tileset.load_tilesheet(
                     tileset_path, 32, 8, tcod.tileset.CHARMAP_TCOD
