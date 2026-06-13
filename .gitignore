@@ -41,3 +41,5 @@ ENV/
 *.log
 saves/
 *scaled.png
+
+leaderboard.json
