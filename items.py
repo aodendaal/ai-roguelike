@@ -27,8 +27,16 @@ class Potion(Item):
         self.duration = duration
         self.char = '!'
         self.color = (255, 100, 100) if amount > 0 else (100, 100, 255)
+        self.color_name = "unknown"
+
+    def get_description(self) -> str:
+        return f"a {self.color_name} potion"
 
     def pick_up(self, player):
+        player.inventory.append(self)
+        return f"Picked up {self.get_description()}."
+
+    def quaff(self, player) -> str:
         player.add_status_effect(self.stat, self.amount, self.duration)
         sign = "+" if self.amount > 0 else ""
         return f"Drank potion: {sign}{self.amount} {self.stat} for {self.duration} turns!"

@@ -22,6 +22,8 @@ class GameState(Enum):
     PLAYER_DEAD = 4
     GAME_WON = 5
     VIEW_LEADERBOARD = 6
+    INVENTORY = 7
+    QUAFF_MENU = 8
 
 
 class Game:
@@ -45,6 +47,7 @@ class Game:
         self.doors_opened = 0
         self.monsters_killed = 0
         self.floors_descended = 0
+        self.potion_colors = {}
 
     @property
     def state(self) -> GameState:
@@ -83,6 +86,27 @@ class Game:
         self.doors_opened = 0
         self.monsters_killed = 0
         self.floors_descended = 0
+        
+        # Shuffle and assign random colors to potion types each run
+        import random
+        color_pool = [
+            ("red", (255, 50, 50)),
+            ("blue", (50, 50, 255)),
+            ("green", (50, 255, 50)),
+            ("yellow", (255, 255, 50)),
+            ("purple", (200, 50, 200)),
+            ("orange", (255, 150, 50)),
+            ("cyan", (50, 255, 255)),
+            ("pink", (255, 150, 200)),
+        ]
+        random.shuffle(color_pool)
+        self.potion_colors = {
+            ("strength", True): color_pool[0],   # buff
+            ("strength", False): color_pool[1],  # debuff
+            ("health", True): color_pool[2],
+            ("health", False): color_pool[3],
+        }
+
         self._state = GameState.PLAYING
         self.death_cause = None
         self.load_level(1)
@@ -99,7 +123,7 @@ class Game:
         """Load a dungeon level"""
         self.player.current_level = level
         self.dungeon = Dungeon(MAP_WIDTH, MAP_HEIGHT)
-        self.dungeon.generate(level)
+        self.dungeon.generate(level, self.potion_colors)
 
         # Place player
         if self.dungeon.player_spawn:
@@ -228,20 +252,37 @@ class Game:
         # Move player
         self.player.move(dx, dy)
 
-        # Check for items
+        # Check for items (auto-pickup for non-potions only)
         items_to_remove = []
         for item in self.dungeon.items:
             if item.x == self.player.x and item.y == self.player.y:
-                msg = item.pick_up(self.player)
-                if isinstance(item, Potion):
-                    self.potions_drunk += 1
-                elif isinstance(item, Weapon):
-                    self.weapons_picked_up += 1
-                self.add_message(msg)
-                items_to_remove.append(item)
+                if not isinstance(item, Potion):
+                    msg = item.pick_up(self.player)
+                    if isinstance(item, Weapon):
+                        self.weapons_picked_up += 1
+                    self.add_message(msg)
+                    items_to_remove.append(item)
 
         for item in items_to_remove:
             self.dungeon.items.remove(item)
+
+    def pickup_item(self):
+        """Pick up an item at the player's position"""
+        item_to_pick = None
+        for item in self.dungeon.items:
+            if item.x == self.player.x and item.y == self.player.y:
+                item_to_pick = item
+                break
+                
+        if item_to_pick:
+            msg = item_to_pick.pick_up(self.player)
+            self.add_message(msg)
+            self.dungeon.items.remove(item_to_pick)
+            if isinstance(item_to_pick, Weapon):
+                self.weapons_picked_up += 1
+            self.update_game()
+        else:
+            self.add_message("There is nothing here to pick up.")
 
     def update_game(self):
         """Update game state after player turn"""
@@ -332,62 +373,154 @@ class Game:
             self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 + 1, self.input_buffer + "_", (200, 255, 200))
             self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 3, "Press Enter to start, Escape to cancel", (150, 150, 150))
             
+    def render_playing_screen(self):
+        # Compute FOV
+        self.compute_fov()
+
+        # Get pastel colors for the current level
+        colors = self.get_floor_colors()
+
+        # Draw map
+        for y in range(MAP_HEIGHT):
+            for x in range(MAP_WIDTH):
+                tile = self.dungeon.tiles[y][x]
+                if self.visible[y, x]:
+                    if tile == TileType.WALL:
+                        self.console.print(x, y, '#', colors["wall_visible"])
+                    elif tile == TileType.CLOSED_DOOR:
+                        self.console.print(x, y, '+', (139, 90, 43))
+                    elif tile == TileType.OPEN_DOOR:
+                        self.console.print(x, y, '/', (139, 90, 43))
+                    else:  # Floor
+                        self.console.print(x, y, '.', colors["floor_visible"])
+                elif self.explored[y, x]:
+                    if tile == TileType.WALL:
+                        self.console.print(x, y, '#', colors["wall_explored"])
+                    elif tile == TileType.CLOSED_DOOR:
+                        self.console.print(x, y, '+', (80, 50, 25))
+                    elif tile == TileType.OPEN_DOOR:
+                        self.console.print(x, y, '/', (80, 50, 25))
+                    else:  # Floor
+                        self.console.print(x, y, '.', colors["floor_explored"])
+
+        # Draw stairs
+        if self.visible[self.dungeon.stairs_pos[1], self.dungeon.stairs_pos[0]]:
+            self.console.print(self.dungeon.stairs_pos[0], self.dungeon.stairs_pos[1],
+                             '>', (200, 200, 200))
+
+        # Draw items
+        for item in self.dungeon.items:
+            if self.visible[item.y, item.x]:
+                self.console.print(item.x, item.y, item.char, item.color)
+
+        # Draw monsters
+        for monster in self.dungeon.monsters:
+            if self.visible[monster.y, monster.x]:
+                self.console.print(monster.x, monster.y, monster.char, monster.color)
+
+        # Draw player
+        self.console.print(self.player.x, self.player.y, self.player.char, self.player.color)
+
+        # Draw UI
+        ui_y = MAP_HEIGHT
+        ui_text = f"Level: {self.player.current_level}/5 | HP: {self.player.health}/{self.player.max_health} | STR: {self.player.current_strength} | Gold: {self.player.gold}"
+        self.console.print(0, ui_y, ui_text, (255, 255, 255))
+
+        ui_y += 1
+        for i, msg in enumerate(self.message_log):
+            self.console.print(0, ui_y + i, msg, (200, 200, 200))
+
+    def render(self):
+        """Render the game to the console"""
+        self.console.clear()
+
+        if self.state == GameState.MENU:
+            self.console.print(SCREEN_WIDTH // 2 - 12, SCREEN_HEIGHT // 2 - 4, "=== ROGUELIKE DUNGEON ===", (255, 215, 0))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 - 1, "1. Play New Game", (200, 200, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 1, "2. View Leaderboard", (200, 200, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 3, "3. Exit", (200, 200, 200))
+            version_str = f"v{VERSION}"
+            self.console.print(SCREEN_WIDTH - len(version_str) - 2, SCREEN_HEIGHT - 2, version_str, (100, 100, 100))
+            
+        elif self.state == GameState.VIEW_LEADERBOARD:
+            self.console.print(SCREEN_WIDTH // 2 - 10, 4, "=== LEADERBOARD ===", (255, 215, 0))
+            
+            top_entries = self.leaderboard.get_top_entries(10)
+            start_y = 7
+            
+            headers = f"{'Rank':4} | {'Name':20} | {'Level':9} | {'Gold':5} | {'Result'}"
+            self.console.print(5, start_y, headers, (255, 215, 0))
+            self.console.print(5, start_y + 1, "-" * 70, (150, 150, 150))
+            
+            for idx, entry in enumerate(top_entries):
+                y = start_y + 2 + idx
+                
+                # Highlight current player's entry if it matches
+                is_current = False
+                if self.player_name:
+                    is_current = (entry.player_name == self.player_name and
+                                  entry.gold == self.player.gold and
+                                  entry.level == self.player.current_level)
+                
+                entry_color = (100, 255, 100) if is_current else (200, 200, 200)
+                
+                result = "WON - Found Amulet" if entry.outcome == "won" else f"DIED - {entry.death_cause}"
+                rank_str = f"{idx + 1:2}."
+                line = f"{rank_str:4} | {entry.player_name:20} | Level {entry.level}/5 | {entry.gold:5} | {result}"
+                self.console.print(5, y, line, entry_color)
+                
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT - 4, "Press Escape to return to menu", (150, 150, 150))
+            
+        elif self.state == GameState.ENTERING_NAME:
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 4, "=== NEW CHARACTER ===", (255, 215, 0))
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 1, "Enter your name:", (255, 255, 255))
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 + 1, self.input_buffer + "_", (200, 255, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 3, "Press Enter to start, Escape to cancel", (150, 150, 150))
+            
         elif self.state == GameState.PLAYING:
-            # Compute FOV
-            self.compute_fov()
+            self.render_playing_screen()
 
-            # Get pastel colors for the current level
-            colors = self.get_floor_colors()
-
-            # Draw map
-            for y in range(MAP_HEIGHT):
-                for x in range(MAP_WIDTH):
-                    tile = self.dungeon.tiles[y][x]
-                    if self.visible[y, x]:
-                        if tile == TileType.WALL:
-                            self.console.print(x, y, '#', colors["wall_visible"])
-                        elif tile == TileType.CLOSED_DOOR:
-                            self.console.print(x, y, '+', (139, 90, 43))
-                        elif tile == TileType.OPEN_DOOR:
-                            self.console.print(x, y, '/', (139, 90, 43))
-                        else:  # Floor
-                            self.console.print(x, y, '.', colors["floor_visible"])
-                    elif self.explored[y, x]:
-                        if tile == TileType.WALL:
-                            self.console.print(x, y, '#', colors["wall_explored"])
-                        elif tile == TileType.CLOSED_DOOR:
-                            self.console.print(x, y, '+', (80, 50, 25))
-                        elif tile == TileType.OPEN_DOOR:
-                            self.console.print(x, y, '/', (80, 50, 25))
-                        else:  # Floor
-                            self.console.print(x, y, '.', colors["floor_explored"])
-
-            # Draw stairs
-            if self.visible[self.dungeon.stairs_pos[1], self.dungeon.stairs_pos[0]]:
-                self.console.print(self.dungeon.stairs_pos[0], self.dungeon.stairs_pos[1],
-                                 '>', (200, 200, 200))
-
-            # Draw items
-            for item in self.dungeon.items:
-                if self.visible[item.y, item.x]:
-                    self.console.print(item.x, item.y, item.char, item.color)
-
-            # Draw monsters
-            for monster in self.dungeon.monsters:
-                if self.visible[monster.y, monster.x]:
-                    self.console.print(monster.x, monster.y, monster.char, monster.color)
-
-            # Draw player
-            self.console.print(self.player.x, self.player.y, self.player.char, self.player.color)
-
-            # Draw UI
-            ui_y = MAP_HEIGHT
-            ui_text = f"Level: {self.player.current_level}/5 | HP: {self.player.health}/{self.player.max_health} | STR: {self.player.current_strength} | Gold: {self.player.gold}"
-            self.console.print(0, ui_y, ui_text, (255, 255, 255))
-
-            ui_y += 1
-            for i, msg in enumerate(self.message_log):
-                self.console.print(0, ui_y + i, msg, (200, 200, 200))
+        elif self.state in (GameState.INVENTORY, GameState.QUAFF_MENU):
+            self.render_playing_screen()
+            
+            # Center overlay box
+            box_width = 40
+            box_height = 20
+            box_x = (SCREEN_WIDTH - box_width) // 2
+            box_y = (SCREEN_HEIGHT - box_height) // 2
+            
+            # Fill background
+            for y in range(box_y, box_y + box_height):
+                for x in range(box_x, box_x + box_width):
+                    self.console.print(x, y, " ", bg=(0, 0, 0))
+            
+            # Border
+            for x in range(box_x, box_x + box_width):
+                self.console.print(x, box_y, "-", (255, 255, 255))
+                self.console.print(x, box_y + box_height - 1, "-", (255, 255, 255))
+            for y in range(box_y, box_y + box_height):
+                self.console.print(box_x, y, "|", (255, 255, 255))
+                self.console.print(box_x + box_width - 1, y, "|", (255, 255, 255))
+                
+            title = " INVENTORY " if self.state == GameState.INVENTORY else " QUAFF POTION "
+            self.console.print(box_x + (box_width - len(title)) // 2, box_y, title, (255, 215, 0))
+            
+            # List items
+            if not self.player.inventory:
+                self.console.print(box_x + 2, box_y + 2, "Your inventory is empty.", (150, 150, 150))
+            else:
+                for idx, item in enumerate(self.player.inventory):
+                    char_code = chr(ord('a') + idx)
+                    desc = item.get_description()
+                    item_str = f"({char_code}) {desc}"
+                    self.console.print(box_x + 2, box_y + 2 + idx, item_str, (200, 200, 200))
+                    
+            # Instructions
+            if self.state == GameState.INVENTORY:
+                footer = "Press Escape or I to close"
+            else:
+                footer = "Select letter to drink, Esc to cancel"
+            self.console.print(box_x + (box_width - len(footer)) // 2, box_y + box_height - 2, footer, (150, 150, 150))
 
         elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
             # Clear console to draw a clean character status screen
@@ -485,7 +618,39 @@ class Game:
                                 self.add_message("You need the Amulet of Yendor first!")
                         else:
                             self.add_message("No stairs here!")
+                    elif event.sym == tcod.event.KeySym.COMMA:
+                        self.pickup_item()
+                    elif event.sym == tcod.event.KeySym.i:
+                        self.state = GameState.INVENTORY
+                    elif event.sym == tcod.event.KeySym.q:
+                        self.state = GameState.QUAFF_MENU
                     self.update_game()
+                    
+            elif self.state == GameState.INVENTORY:
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.i):
+                        self.state = GameState.PLAYING
+                        
+            elif self.state == GameState.QUAFF_MENU:
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym == tcod.event.KeySym.ESCAPE:
+                        self.state = GameState.PLAYING
+                    else:
+                        key_char = None
+                        if tcod.event.KeySym.a <= event.sym <= tcod.event.KeySym.z:
+                            key_char = chr(ord('a') + (event.sym - tcod.event.KeySym.a))
+                        
+                        if key_char:
+                            idx = ord(key_char) - ord('a')
+                            if 0 <= idx < len(self.player.inventory):
+                                item = self.player.inventory[idx]
+                                if isinstance(item, Potion):
+                                    msg = item.quaff(self.player)
+                                    self.add_message(msg)
+                                    self.potions_drunk += 1
+                                    self.player.inventory.pop(idx)
+                                    self.state = GameState.PLAYING
+                                    self.update_game()
                     
             elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
                 if isinstance(event, tcod.event.KeyDown):

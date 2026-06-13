@@ -419,10 +419,28 @@ def test_character_life_status_screen():
     potion = Potion(5, 5, "strength", 2, 10)
     weapon = Weapon(5, 5, 1)
     game.dungeon.items = [potion, weapon]
-    # Stand player at (5, 5) and run move_player with no movement to trigger pickup
+    # Stand player at (5, 5) and run move_player with no movement to trigger pickup of auto-pickup weapon
     game.move_player(0, 0)
-    assert game.potions_drunk == 1
     assert game.weapons_picked_up == 1
+    # Potion should still be on the ground
+    assert potion in game.dungeon.items
+    
+    # Pick up the potion manually
+    game.pickup_item()
+    assert potion not in game.dungeon.items
+    assert len(game.player.inventory) == 1
+    assert game.player.inventory[0] == potion
+    
+    # Quaff the potion
+    mock_quaff_events = [
+        tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False),
+        tcod.event.KeyDown(sym=tcod.event.KeySym.a, scancode=0, mod=0, repeat=False)
+    ]
+    from unittest.mock import patch
+    with patch("tcod.event.get", return_value=mock_quaff_events):
+        game.process_events()
+    assert game.potions_drunk == 1
+    assert len(game.player.inventory) == 0
     
     # 4. Test floors descended stat
     game.dungeon.stairs_pos = (5, 5)
@@ -435,6 +453,71 @@ def test_character_life_status_screen():
         game.process_events()
     
     assert game.floors_descended == 1
+
+
+def test_inventory_and_quaff_menus(monkeypatch):
+    """Test inventory and quaff menu interactions via key events"""
+    game = Game()
+    game.new_game()
+    game.state = GameState.PLAYING
+    
+    # 1. Test opening inventory menu
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.INVENTORY
+    
+    # 2. Test closing inventory menu with 'i'
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.PLAYING
+    
+    # 3. Test opening inventory and closing with Escape
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.INVENTORY
+    
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.ESCAPE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.PLAYING
+    
+    # 4. Test opening quaff menu and closing with Escape
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.QUAFF_MENU
+    
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.ESCAPE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.PLAYING
+    
+    # 5. Test trying to quaff with an empty inventory
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.QUAFF_MENU
+    
+    # Press 'a' (index 0) which is empty/invalid
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.a, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    # State should remain in QUAFF_MENU because selection was invalid
+    assert game.state == GameState.QUAFF_MENU
+    
+    # 6. Press Escape to clear
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.ESCAPE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    game.process_events()
+    assert game.state == GameState.PLAYING
+
+    # 7. Test pickup when nothing is on floor
+    game.dungeon.items = []
+    game.pickup_item()
+    assert "nothing here" in game.message_log[-1].lower()
 
 
 

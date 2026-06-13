@@ -71,7 +71,7 @@ class Dungeon:
             if 0 <= x < self.width and 0 <= y < self.height:
                 self.tiles[y][x] = TileType.FLOOR
 
-    def generate(self, level: int):
+    def generate(self, level: int, potion_colors: dict = None):
         """Generate dungeon layout"""
         self.rooms = []
         self.monsters = []
@@ -158,8 +158,15 @@ class Dungeon:
                     elif random.random() < 0.3:
                         self.items.append(Weapon(x, y, random.randint(2, 5)))
                     elif random.random() < 0.5:
-                        self.items.append(Potion(x, y, random.choice(["strength", "health"]),
-                                               random.choice([-2, 2, 3, 5]), random.randint(13, 38)))
+                        stat = random.choice(["strength", "health"])
+                        amount = random.choice([-2, 2, 3, 5])
+                        duration = random.randint(13, 38)
+                        potion = Potion(x, y, stat, amount, duration)
+                        if potion_colors:
+                            color_name, rgb = potion_colors[(stat, amount > 0)]
+                            potion.color_name = color_name
+                            potion.color = rgb
+                        self.items.append(potion)
                     else:
                         self.items.append(Gold(x, y, random.randint(5, 20)))
                 else:
@@ -167,8 +174,15 @@ class Dungeon:
                     if random.random() < 0.4:
                         self.items.append(Weapon(x, y, random.randint(1, 3)))
                     elif random.random() < 0.4:
-                        self.items.append(Potion(x, y, random.choice(["strength", "health"]),
-                                               random.choice([-2, 2, 3, 5]), random.randint(3, 8)))
+                        stat = random.choice(["strength", "health"])
+                        amount = random.choice([-2, 2, 3, 5])
+                        duration = random.randint(3, 8)
+                        potion = Potion(x, y, stat, amount, duration)
+                        if potion_colors:
+                            color_name, rgb = potion_colors[(stat, amount > 0)]
+                            potion.color_name = color_name
+                            potion.color = rgb
+                        self.items.append(potion)
                     else:
                         self.items.append(Gold(x, y, random.randint(5, 20)))
 

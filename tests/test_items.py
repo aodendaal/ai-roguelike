@@ -57,11 +57,17 @@ class TestPotion:
         """Test picking up a potion"""
         player = Player(0, 0)
         potion = Potion(0, 0, "strength", 5, 3)
+        potion.color_name = "green"
         msg = potion.pick_up(player)
         
-        assert "strength" in msg.lower()
-        assert "+5" in msg
-        assert "3" in msg
+        assert "green" in msg.lower()
+        assert player.current_strength == 10  # not yet consumed
+        assert potion in player.inventory
+        
+        quaff_msg = potion.quaff(player)
+        assert "strength" in quaff_msg.lower()
+        assert "+5" in quaff_msg
+        assert "3" in quaff_msg
         assert player.current_strength == 15  # 10 + 5 from potion
 
 

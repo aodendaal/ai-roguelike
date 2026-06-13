@@ -53,6 +53,7 @@ class Player(Actor):
         self.status_effects = {}  # {stat: [(amount, turns_remaining), ...]}
         self.current_level = 1
         self.has_amulet = False
+        self.inventory = []
 
     def get_total_stat(self, stat: str) -> int:
         """Get stat including temporary effects"""
