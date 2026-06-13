@@ -160,8 +160,8 @@ def test_game_over_input_backspace(monkeypatch):
     game.entering_name = True
     game.input_buffer = "Alice"
     
-    # Mock tcod.event.get() to return a KeyDown event with K_BACKSPACE
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_BACKSPACE, scancode=0, mod=0, repeat=False)]
+    # Mock tcod.event.get() to return a KeyDown event with KeySym.BACKSPACE
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.BACKSPACE, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     
     res = game.game_over_input()
@@ -179,7 +179,7 @@ def test_game_over_input_return(monkeypatch):
     saved_entries = []
     monkeypatch.setattr(game.leaderboard, "add_entry", lambda **kwargs: saved_entries.append(kwargs))
     
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_RETURN, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.RETURN, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     
     res = game.game_over_input()
@@ -228,28 +228,28 @@ def test_game_menu_navigation(monkeypatch):
     assert game.state == GameState.MENU
     
     # Pressing 1 transitions to ENTERING_NAME
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_1, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.N1, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     res = game.process_events()
     assert res is True
     assert game.state == GameState.ENTERING_NAME
     
     # Pressing Escape in ENTERING_NAME transitions back to MENU
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_ESCAPE, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.ESCAPE, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     res = game.process_events()
     assert res is True
     assert game.state == GameState.MENU
     
     # Pressing 2 transitions to VIEW_LEADERBOARD
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_2, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.N2, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     res = game.process_events()
     assert res is True
     assert game.state == GameState.VIEW_LEADERBOARD
     
     # Pressing Space in VIEW_LEADERBOARD transitions back to MENU
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_SPACE, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.SPACE, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     res = game.process_events()
     assert res is True

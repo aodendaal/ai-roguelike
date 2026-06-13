@@ -146,40 +146,7 @@ class Game:
                 err += dx
                 y += sy
 
-    def handle_input(self) -> bool:
-        """Handle player input. Returns False if game should quit."""
-        for event in tcod.event.get():
-            if event.type == "QUIT":
-                return False
-            elif event.type == "KEYDOWN":
-                if event.sym == tcod.event.K_ESCAPE:
-                    return False
-                elif event.sym == tcod.event.K_UP:
-                    self.move_player(0, -1)
-                elif event.sym == tcod.event.K_DOWN:
-                    self.move_player(0, 1)
-                elif event.sym == tcod.event.K_LEFT:
-                    self.move_player(-1, 0)
-                elif event.sym == tcod.event.K_RIGHT:
-                    self.move_player(1, 0)
-                elif event.sym == tcod.event.K_PERIOD:
-                    # Try to go down stairs
-                    if self.dungeon.stairs_pos and (self.player.x, self.player.y) == self.dungeon.stairs_pos:
-                        if self.player.current_level < DUNGEON_DEPTH:
-                            self.load_level(self.player.current_level + 1)
-                        elif self.player.has_amulet:
-                            self.state = GameState.GAME_WON
-                            self.entering_name = True
-                            return True
-                        else:
-                            self.add_message("You need the Amulet of Yendor first!")
-                    else:
-                        self.add_message("No stairs here!")
 
-                self.update_game()
-                return True
-
-        return True
 
     def move_player(self, dx: int, dy: int):
         """Move player and handle interactions"""
@@ -377,52 +344,52 @@ class Game:
     def process_events(self) -> bool:
         """Process all pending events. Returns False to exit the game."""
         for event in tcod.event.get():
-            if event.type == "QUIT":
+            if isinstance(event, tcod.event.Quit):
                 return False
                 
             if self.state == GameState.MENU:
-                if event.type == "KEYDOWN":
-                    if event.sym in (tcod.event.K_1, tcod.event.K_KP_1):
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym in (tcod.event.KeySym.N1, tcod.event.KeySym.KP_1):
                         self.input_buffer = ""
                         self.state = GameState.ENTERING_NAME
-                    elif event.sym in (tcod.event.K_2, tcod.event.K_KP_2):
+                    elif event.sym in (tcod.event.KeySym.N2, tcod.event.KeySym.KP_2):
                         self.leaderboard.load()
                         self.state = GameState.VIEW_LEADERBOARD
-                    elif event.sym in (tcod.event.K_3, tcod.event.K_KP_3, tcod.event.K_ESCAPE, tcod.event.K_q):
+                    elif event.sym in (tcod.event.KeySym.N3, tcod.event.KeySym.KP_3, tcod.event.KeySym.ESCAPE, tcod.event.KeySym.Q):
                         return False
                         
             elif self.state == GameState.VIEW_LEADERBOARD:
-                if event.type == "KEYDOWN":
-                    if event.sym in (tcod.event.K_ESCAPE, tcod.event.K_RETURN, tcod.event.K_SPACE):
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.RETURN, tcod.event.KeySym.SPACE):
                         self.state = GameState.MENU
                         
             elif self.state == GameState.ENTERING_NAME:
-                if event.type == "KEYDOWN":
-                    if event.sym == tcod.event.K_RETURN:
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym == tcod.event.KeySym.RETURN:
                         if self.input_buffer.strip():
                             self.start_game_with_name(self.input_buffer.strip())
-                    elif event.sym == tcod.event.K_BACKSPACE:
+                    elif event.sym == tcod.event.KeySym.BACKSPACE:
                         self.input_buffer = self.input_buffer[:-1]
-                    elif event.sym == tcod.event.K_ESCAPE:
+                    elif event.sym == tcod.event.KeySym.ESCAPE:
                         self.state = GameState.MENU
                 elif isinstance(event, tcod.event.TextInput):
                     if len(self.input_buffer) < 20:
                         self.input_buffer += event.text
                         
             elif self.state == GameState.PLAYING:
-                if event.type == "KEYDOWN":
-                    if event.sym == tcod.event.K_ESCAPE:
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym == tcod.event.KeySym.ESCAPE:
                         self.state = GameState.MENU
                         return True
-                    elif event.sym == tcod.event.K_UP:
+                    elif event.sym == tcod.event.KeySym.UP:
                         self.move_player(0, -1)
-                    elif event.sym == tcod.event.K_DOWN:
+                    elif event.sym == tcod.event.KeySym.DOWN:
                         self.move_player(0, 1)
-                    elif event.sym == tcod.event.K_LEFT:
+                    elif event.sym == tcod.event.KeySym.LEFT:
                         self.move_player(-1, 0)
-                    elif event.sym == tcod.event.K_RIGHT:
+                    elif event.sym == tcod.event.KeySym.RIGHT:
                         self.move_player(1, 0)
-                    elif event.sym == tcod.event.K_PERIOD:
+                    elif event.sym == tcod.event.KeySym.PERIOD:
                         # Try to go down stairs
                         if self.dungeon.stairs_pos and (self.player.x, self.player.y) == self.dungeon.stairs_pos:
                             if self.player.current_level < DUNGEON_DEPTH:
@@ -438,10 +405,10 @@ class Game:
                     self.update_game()
                     
             elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
-                if event.type == "KEYDOWN":
-                    if event.sym == tcod.event.K_r:
+                if isinstance(event, tcod.event.KeyDown):
+                    if event.sym == tcod.event.KeySym.R:
                         self.state = GameState.MENU
-                    elif event.sym in (tcod.event.K_q, tcod.event.K_ESCAPE):
+                    elif event.sym in (tcod.event.KeySym.Q, tcod.event.KeySym.ESCAPE):
                         return False
         return True
 
