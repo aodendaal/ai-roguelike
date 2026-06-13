@@ -184,11 +184,11 @@ def test_game_over_input_return(monkeypatch):
 
 
 def test_entering_name_toggles_text_input():
-    """Test that setting entering_name property calls start/stop_text_input on context"""
+    """Test that setting entering_name property calls start/stop_text_input on context.sdl_window"""
     game = Game()
     
-    # Create a mock context
-    class MockContext:
+    # Create a mock sdl_window
+    class MockSDLWindow:
         def __init__(self):
             self.start_called = 0
             self.stop_called = 0
@@ -197,18 +197,22 @@ def test_entering_name_toggles_text_input():
         def stop_text_input(self):
             self.stop_called += 1
             
+    class MockContext:
+        def __init__(self):
+            self.sdl_window = MockSDLWindow()
+            
     mock_ctx = MockContext()
     game.context = mock_ctx
     
     # Transition to True
     game.entering_name = True
-    assert mock_ctx.start_called == 1
-    assert mock_ctx.stop_called == 0
+    assert mock_ctx.sdl_window.start_called == 1
+    assert mock_ctx.sdl_window.stop_called == 0
     
     # Transition to False
     game.entering_name = False
-    assert mock_ctx.start_called == 1
-    assert mock_ctx.stop_called == 1
+    assert mock_ctx.sdl_window.start_called == 1
+    assert mock_ctx.sdl_window.stop_called == 1
 
 
 

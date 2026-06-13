@@ -44,11 +44,11 @@ class Game:
     @entering_name.setter
     def entering_name(self, value: bool):
         self._entering_name = value
-        if self.context:
+        if self.context and hasattr(self.context, "sdl_window") and self.context.sdl_window:
             if value:
-                self.context.start_text_input()
+                self.context.sdl_window.start_text_input()
             else:
-                self.context.stop_text_input()
+                self.context.sdl_window.stop_text_input()
 
     def new_game(self):
         """Start a new game"""
