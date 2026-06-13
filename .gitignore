@@ -40,3 +40,4 @@ ENV/
 # Game
 *.log
 saves/
+*scaled.png

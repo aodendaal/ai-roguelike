@@ -378,10 +378,18 @@ class Game:
         """Try to load custom tileset, fall back to default if not available"""
         try:
             import pathlib
+            from PIL import Image
             tileset_path = pathlib.Path(__file__).parent / "deja10x10_gs_tc.png"
             if tileset_path.exists():
+                # Scale the tileset by 1.5x (50% bigger) using Nearest Neighbor to keep pixel art clean
+                with Image.open(tileset_path) as img:
+                    new_width = int(img.width * 1.5)
+                    new_height = int(img.height * 1.5)
+                    resized_img = img.resize((new_width, new_height), Image.Resampling.NEAREST)
+                    temp_path = pathlib.Path(__file__).parent / "deja10x10_gs_tc_scaled.png"
+                    resized_img.save(temp_path)
                 return tcod.tileset.load_tilesheet(
-                    tileset_path, 32, 8, tcod.tileset.CHARMAP_TCOD
+                    temp_path, 32, 8, tcod.tileset.CHARMAP_TCOD
                 )
         except Exception as e:
             print(f"Could not load custom tileset: {e}")

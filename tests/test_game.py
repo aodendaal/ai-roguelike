@@ -14,13 +14,18 @@ from leaderboard import LEADERBOARD_FILE
 
 
 @pytest.fixture(autouse=True)
-def clean_leaderboard():
-    """Ensure leaderboard.json does not exist before and after tests"""
+def clean_test_artifacts():
+    """Ensure leaderboard.json and scaled tilesets do not exist before and after tests"""
     if LEADERBOARD_FILE.exists():
         LEADERBOARD_FILE.unlink()
+    scaled_file = pathlib.Path(__file__).parent.parent / "deja10x10_gs_tc_scaled.png"
+    if scaled_file.exists():
+        scaled_file.unlink()
     yield
     if LEADERBOARD_FILE.exists():
         LEADERBOARD_FILE.unlink()
+    if scaled_file.exists():
+        scaled_file.unlink()
 
 
 def test_create_tileset(tmp_path):
