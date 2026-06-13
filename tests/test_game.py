@@ -383,4 +383,58 @@ def test_floor_pastel_colors():
     assert colors_6["wall_visible"] == (150, 140, 180)
 
 
+def test_character_life_status_screen():
+    """Test that all stats are correctly tracked and reset"""
+    from dungeon import TileType
+    from items import Potion, Weapon
+    from monsters import Falcon
+    
+    game = Game()
+    game.new_game()
+    
+    # Verify initial stats are 0
+    assert game.potions_drunk == 0
+    assert game.weapons_picked_up == 0
+    assert game.doors_opened == 0
+    assert game.monsters_killed == 0
+    assert game.floors_descended == 0
+    
+    # 1. Test door opened stat
+    game.dungeon.tiles[5][6] = TileType.CLOSED_DOOR
+    game.player.x, game.player.y = 5, 5
+    game.move_player(1, 0)
+    assert game.doors_opened == 1
+    
+    # 2. Test monsters killed stat
+    # Ensure tiles are floors so the player doesn't hit a wall check
+    game.dungeon.tiles[5][5] = TileType.FLOOR
+    game.dungeon.tiles[6][5] = TileType.FLOOR
+    monster = Falcon(5, 6)
+    monster.health = 1  # make it easy to kill
+    game.dungeon.monsters = [monster]
+    game.move_player(0, 1)  # moves into Falcon
+    assert game.monsters_killed == 1
+    
+    # 3. Test item pickup stats (potions & weapons)
+    potion = Potion(5, 5, "strength", 2, 10)
+    weapon = Weapon(5, 5, 1)
+    game.dungeon.items = [potion, weapon]
+    # Stand player at (5, 5) and run move_player with no movement to trigger pickup
+    game.move_player(0, 0)
+    assert game.potions_drunk == 1
+    assert game.weapons_picked_up == 1
+    
+    # 4. Test floors descended stat
+    game.dungeon.stairs_pos = (5, 5)
+    
+    # Mock game.process_events event loop
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.PERIOD, scancode=0, mod=0, repeat=False)]
+    import pytest
+    from unittest.mock import patch
+    with patch("tcod.event.get", return_value=mock_events):
+        game.process_events()
+    
+    assert game.floors_descended == 1
+
+
 

@@ -13,6 +13,7 @@ from constants import (
 from entities import Player
 from dungeon import Dungeon, TileType
 from leaderboard import Leaderboard
+from items import Potion, Weapon
 
 class GameState(Enum):
     MENU = 1
@@ -39,6 +40,11 @@ class Game:
         self.leaderboard = Leaderboard()
         self.input_buffer = ""  # For name input
         self.player_name = ""
+        self.potions_drunk = 0
+        self.weapons_picked_up = 0
+        self.doors_opened = 0
+        self.monsters_killed = 0
+        self.floors_descended = 0
 
     @property
     def state(self) -> GameState:
@@ -72,6 +78,11 @@ class Game:
         self.player.has_amulet = False
         self.message_log = []
         self.turn_count = 0
+        self.potions_drunk = 0
+        self.weapons_picked_up = 0
+        self.doors_opened = 0
+        self.monsters_killed = 0
+        self.floors_descended = 0
         self._state = GameState.PLAYING
         self.death_cause = None
         self.load_level(1)
@@ -199,6 +210,7 @@ class Game:
                     self.dungeon.tiles[new_y][new_x] == TileType.CLOSED_DOOR):
                 self.dungeon.tiles[new_y][new_x] = TileType.OPEN_DOOR
                 self.add_message("You open the door.")
+                self.doors_opened += 1
                 self.update_game()
             return
 
@@ -210,6 +222,7 @@ class Game:
                 if monster.health <= 0:
                     self.dungeon.monsters.remove(monster)
                     self.add_message(f"{monster.name} died!")
+                    self.monsters_killed += 1
                 return
 
         # Move player
@@ -220,6 +233,10 @@ class Game:
         for item in self.dungeon.items:
             if item.x == self.player.x and item.y == self.player.y:
                 msg = item.pick_up(self.player)
+                if isinstance(item, Potion):
+                    self.potions_drunk += 1
+                elif isinstance(item, Weapon):
+                    self.weapons_picked_up += 1
                 self.add_message(msg)
                 items_to_remove.append(item)
 
@@ -290,10 +307,20 @@ class Game:
             
             for idx, entry in enumerate(top_entries):
                 y = start_y + 2 + idx
+                
+                # Highlight current player's entry if it matches
+                is_current = False
+                if self.player_name:
+                    is_current = (entry.player_name == self.player_name and
+                                  entry.gold == self.player.gold and
+                                  entry.level == self.player.current_level)
+                
+                entry_color = (100, 255, 100) if is_current else (200, 200, 200)
+                
                 result = "WON - Found Amulet" if entry.outcome == "won" else f"DIED - {entry.death_cause}"
                 rank_str = f"{idx + 1:2}."
                 line = f"{rank_str:4} | {entry.player_name:20} | Level {entry.level}/5 | {entry.gold:5} | {result}"
-                self.console.print(5, y, line, (200, 200, 200))
+                self.console.print(5, y, line, entry_color)
                 
             self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT - 4, "Press Escape to return to menu", (150, 150, 150))
             
@@ -361,41 +388,36 @@ class Game:
                 self.console.print(0, ui_y + i, msg, (200, 200, 200))
 
         elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
-            # Clear console to draw a clean leaderboard screen
+            # Clear console to draw a clean character status screen
             self.console.clear()
             
             header = "YOU DIED!" if self.state == GameState.PLAYER_DEAD else "YOU WON!"
             header_color = (255, 0, 0) if self.state == GameState.PLAYER_DEAD else (0, 255, 0)
-            self.console.print(SCREEN_WIDTH // 2 - len(header) // 2, 3, header, header_color)
+            self.console.print(SCREEN_WIDTH // 2 - len(header) // 2, 5, header, header_color)
             
-            self.console.print(SCREEN_WIDTH // 2 - 10, 6, "=== LEADERBOARD ===", (255, 255, 255))
+            self.console.print(SCREEN_WIDTH // 2 - 12, 8, "=== CHARACTER STATUS ===", (255, 215, 0))
             
-            # Draw top entries
-            top_entries = self.leaderboard.get_top_entries(10)
-            start_y = 9
+            # Print stats
+            stats = [
+                f"Character Name:   {self.player_name}",
+                f"Turns Played:     {self.turn_count}",
+                f"Gold Collected:   {self.player.gold}",
+                f"Floors Descended: {self.floors_descended}",
+                f"Potions Drunk:    {self.potions_drunk}",
+                f"Weapons Picked:   {self.weapons_picked_up}",
+                f"Doors Opened:     {self.doors_opened}",
+                f"Monsters Killed:  {self.monsters_killed}"
+            ]
             
-            headers = f"{'Rank':4} | {'Name':20} | {'Level':9} | {'Gold':5} | {'Result'}"
-            self.console.print(5, start_y, headers, (255, 215, 0))
-            self.console.print(5, start_y + 1, "-" * 70, (150, 150, 150))
-            
-            for idx, entry in enumerate(top_entries):
-                y = start_y + 2 + idx
+            start_y = 11
+            for i, stat in enumerate(stats):
+                self.console.print(SCREEN_WIDTH // 2 - 15, start_y + i, stat, (200, 200, 200))
                 
-                # Highlight current player's entry
-                is_current = (entry.player_name == self.player_name and
-                              entry.gold == self.player.gold and
-                              entry.level == self.player.current_level)
-                
-                entry_color = (100, 255, 100) if is_current else (200, 200, 200)
-                
-                result = "WON - Found Amulet" if entry.outcome == "won" else f"DIED - {entry.death_cause}"
-                rank_str = f"{idx + 1:2}."
-                line = f"{rank_str:4} | {entry.player_name:20} | Level {entry.level}/5 | {entry.gold:5} | {result}"
-                self.console.print(5, y, line, entry_color)
-                
-            footer_y = SCREEN_HEIGHT - 4
-            self.console.print(SCREEN_WIDTH // 2 - 20, footer_y,
-                             "Press R to return to menu or Q to quit", (200, 200, 200))
+            footer_y = SCREEN_HEIGHT - 6
+            self.console.print(SCREEN_WIDTH // 2 - 22, footer_y,
+                             "Press Enter to view Leaderboard", (100, 255, 100))
+            self.console.print(SCREEN_WIDTH // 2 - 22, footer_y + 2,
+                             "Press R to return to menu or Q to quit", (150, 150, 150))
 
         self.context.present(self.console)
 
@@ -452,6 +474,7 @@ class Game:
                         if self.dungeon.stairs_pos and (self.player.x, self.player.y) == self.dungeon.stairs_pos:
                             if self.player.current_level < DUNGEON_DEPTH:
                                 self.load_level(self.player.current_level + 1)
+                                self.floors_descended += 1
                             elif self.player.has_amulet:
                                 self.state = GameState.GAME_WON
                                 self.save_score()
@@ -464,7 +487,10 @@ class Game:
                     
             elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
                 if isinstance(event, tcod.event.KeyDown):
-                    if event.sym == tcod.event.KeySym.R:
+                    if event.sym in (tcod.event.KeySym.RETURN, tcod.event.KeySym.KP_ENTER):
+                        self.leaderboard.load()
+                        self.state = GameState.VIEW_LEADERBOARD
+                    elif event.sym == tcod.event.KeySym.R:
                         self.state = GameState.MENU
                     elif event.sym in (tcod.event.KeySym.Q, tcod.event.KeySym.ESCAPE):
                         return False
