@@ -22,6 +22,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+.coverage
 
 # Virtual environments
 venv/
@@ -41,5 +42,4 @@ ENV/
 *.log
 saves/
 *scaled.png
-
 leaderboard.json
