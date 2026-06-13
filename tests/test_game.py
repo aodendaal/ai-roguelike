@@ -10,6 +10,17 @@ from PIL import Image
 
 from game import Game, GameState
 from create_tileset import create_tileset
+from leaderboard import LEADERBOARD_FILE
+
+
+@pytest.fixture(autouse=True)
+def clean_leaderboard():
+    """Ensure leaderboard.json does not exist before and after tests"""
+    if LEADERBOARD_FILE.exists():
+        LEADERBOARD_FILE.unlink()
+    yield
+    if LEADERBOARD_FILE.exists():
+        LEADERBOARD_FILE.unlink()
 
 
 def test_create_tileset(tmp_path):
@@ -120,4 +131,55 @@ def test_load_real_tileset():
     tileset = game.load_tileset()
     assert tileset is not None
     assert isinstance(tileset, tcod.tileset.Tileset)
+
+
+def test_game_over_input_text_input(monkeypatch):
+    """Test that game_over_input correctly appends characters from TextInput events"""
+    game = Game()
+    game.entering_name = True
+    game.input_buffer = "Alice"
+    
+    # Mock tcod.event.get() to return a TextInput event
+    mock_events = [tcod.event.TextInput(text="b")]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    
+    res = game.game_over_input()
+    assert res is True
+    assert game.input_buffer == "Aliceb"
+
+
+def test_game_over_input_backspace(monkeypatch):
+    """Test that game_over_input handles Backspace key to remove last character"""
+    game = Game()
+    game.entering_name = True
+    game.input_buffer = "Alice"
+    
+    # Mock tcod.event.get() to return a KeyDown event with K_BACKSPACE
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_BACKSPACE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    
+    res = game.game_over_input()
+    assert res is True
+    assert game.input_buffer == "Alic"
+
+
+def test_game_over_input_return(monkeypatch):
+    """Test that game_over_input handles Return key to save score and exit name entry"""
+    game = Game()
+    game.entering_name = True
+    game.input_buffer = "Alice"
+    
+    # Mock leaderboard.add_entry
+    saved_entries = []
+    monkeypatch.setattr(game.leaderboard, "add_entry", lambda **kwargs: saved_entries.append(kwargs))
+    
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_RETURN, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    
+    res = game.game_over_input()
+    assert res is True
+    assert not game.entering_name
+    assert len(saved_entries) == 1
+    assert saved_entries[0]["player_name"] == "Alice"
+
 

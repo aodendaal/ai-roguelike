@@ -98,7 +98,9 @@ class TestLeaderboard:
     
     @pytest.fixture(autouse=True)
     def cleanup(self):
-        """Clean up leaderboard file after each test"""
+        """Clean up leaderboard file before and after each test"""
+        if LEADERBOARD_FILE.exists():
+            LEADERBOARD_FILE.unlink()
         yield
         if LEADERBOARD_FILE.exists():
             LEADERBOARD_FILE.unlink()

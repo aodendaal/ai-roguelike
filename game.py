@@ -295,7 +295,7 @@ class Game:
                 return False
             elif event.type == "KEYDOWN":
                 if self.entering_name:
-                    # Handle name input
+                    # Handle name input navigation/control keys
                     if event.sym == tcod.event.K_RETURN:
                         if self.input_buffer.strip():
                             self.save_score()
@@ -308,9 +308,6 @@ class Game:
                         self.save_score()
                         self.entering_name = False
                         return True
-                    elif hasattr(event, 'text') and len(self.input_buffer) < 20:
-                        if event.text and event.text.isprintable():
-                            self.input_buffer += event.text
                 else:
                     # Handle game over input
                     if event.sym == tcod.event.K_r:
@@ -318,6 +315,9 @@ class Game:
                         return True
                     elif event.sym == tcod.event.K_q or event.sym == tcod.event.K_ESCAPE:
                         return False
+            elif isinstance(event, tcod.event.TextInput) and self.entering_name:
+                if len(self.input_buffer) < 20:
+                    self.input_buffer += event.text
         return True
 
     def save_score(self):
