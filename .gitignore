@@ -43,3 +43,4 @@ ENV/
 saves/
 *scaled.png
 leaderboard.json
+*.spec
