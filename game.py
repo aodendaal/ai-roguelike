@@ -35,7 +35,20 @@ class Game:
         self.death_cause = None  # Track which monster killed the player
         self.leaderboard = Leaderboard()
         self.input_buffer = ""  # For name input
-        self.entering_name = False  # Flag for name entry mode
+        self._entering_name = False  # Flag for name entry mode
+
+    @property
+    def entering_name(self) -> bool:
+        return self._entering_name
+
+    @entering_name.setter
+    def entering_name(self, value: bool):
+        self._entering_name = value
+        if self.context:
+            if value:
+                self.context.start_text_input()
+            else:
+                self.context.stop_text_input()
 
     def new_game(self):
         """Start a new game"""

@@ -124,6 +124,8 @@ class TestDungeon:
     def test_dungeon_level_5_has_more_weapons(self):
         """Test level 5 has more weapons (higher difficulty)"""
         from items import Weapon
+        import random
+        random.seed(42)
         
         # Generate multiple dungeons to verify level 5 has more weapons
         level_5_weapon_counts = []

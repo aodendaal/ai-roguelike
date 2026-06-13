@@ -183,3 +183,32 @@ def test_game_over_input_return(monkeypatch):
     assert saved_entries[0]["player_name"] == "Alice"
 
 
+def test_entering_name_toggles_text_input():
+    """Test that setting entering_name property calls start/stop_text_input on context"""
+    game = Game()
+    
+    # Create a mock context
+    class MockContext:
+        def __init__(self):
+            self.start_called = 0
+            self.stop_called = 0
+        def start_text_input(self):
+            self.start_called += 1
+        def stop_text_input(self):
+            self.stop_called += 1
+            
+    mock_ctx = MockContext()
+    game.context = mock_ctx
+    
+    # Transition to True
+    game.entering_name = True
+    assert mock_ctx.start_called == 1
+    assert mock_ctx.stop_called == 0
+    
+    # Transition to False
+    game.entering_name = False
+    assert mock_ctx.start_called == 1
+    assert mock_ctx.stop_called == 1
+
+
+
