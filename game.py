@@ -290,13 +290,41 @@ class Game:
             self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2, self.input_buffer + "_", (200, 255, 200))
             self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
                              "Press Enter to confirm", (200, 200, 200))
-        elif self.state == GameState.PLAYER_DEAD:
-            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2, "YOU DIED!", (255, 0, 0))
-            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
-                             "Press R to restart or Q to quit", (200, 200, 200))
-        elif self.state == GameState.GAME_WON:
-            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2, "YOU WON!", (0, 255, 0))
-            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
+        elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
+            # Clear console to draw a clean leaderboard screen
+            self.console.clear()
+            
+            header = "YOU DIED!" if self.state == GameState.PLAYER_DEAD else "YOU WON!"
+            header_color = (255, 0, 0) if self.state == GameState.PLAYER_DEAD else (0, 255, 0)
+            self.console.print(SCREEN_WIDTH // 2 - len(header) // 2, 3, header, header_color)
+            
+            self.console.print(SCREEN_WIDTH // 2 - 10, 6, "=== LEADERBOARD ===", (255, 255, 255))
+            
+            # Draw top entries
+            top_entries = self.leaderboard.get_top_entries(10)
+            start_y = 9
+            
+            headers = f"{'Rank':4} | {'Name':20} | {'Level':9} | {'Gold':5} | {'Result'}"
+            self.console.print(5, start_y, headers, (255, 215, 0))
+            self.console.print(5, start_y + 1, "-" * 70, (150, 150, 150))
+            
+            for idx, entry in enumerate(top_entries):
+                y = start_y + 2 + idx
+                
+                # Highlight current player's entry
+                is_current = (entry.player_name == self.input_buffer.strip() and
+                              entry.gold == self.player.gold and
+                              entry.level == self.player.current_level)
+                
+                entry_color = (100, 255, 100) if is_current else (200, 200, 200)
+                
+                result = "WON - Found Amulet" if entry.outcome == "won" else f"DIED - {entry.death_cause}"
+                rank_str = f"{idx + 1:2}."
+                line = f"{rank_str:4} | {entry.player_name:20} | Level {entry.level}/5 | {entry.gold:5} | {result}"
+                self.console.print(5, y, line, entry_color)
+                
+            footer_y = SCREEN_HEIGHT - 4
+            self.console.print(SCREEN_WIDTH // 2 - 20, footer_y,
                              "Press R to restart or Q to quit", (200, 200, 200))
 
         self.context.present(self.console)

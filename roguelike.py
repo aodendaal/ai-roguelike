@@ -30,6 +30,7 @@ def main():
             game = Game()
             game.run()
         elif choice == "2":
+            leaderboard.load()
             print("\n" + leaderboard.get_formatted_leaderboard())
             print()
         elif choice == "3":
