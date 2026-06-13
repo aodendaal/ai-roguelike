@@ -357,4 +357,30 @@ def test_fov_sees_non_walkable_tiles():
     assert not game.visible[5, 8]
 
 
+def test_floor_pastel_colors():
+    """Test that floor pastel colors are fetched correctly for each level and fallback properly"""
+    game = Game()
+    
+    # Test level 1 (Soft Lavender/Purple)
+    game.player.current_level = 1
+    colors_1 = game.get_floor_colors()
+    assert colors_1["wall_visible"] == (150, 140, 180)
+    assert colors_1["floor_visible"] == (200, 190, 220)
+    
+    # Test level 2 (Soft Mint/Green)
+    game.player.current_level = 2
+    colors_2 = game.get_floor_colors()
+    assert colors_2["wall_visible"] == (130, 170, 140)
+    
+    # Test level 5 (Soft Rose/Pink)
+    game.player.current_level = 5
+    colors_5 = game.get_floor_colors()
+    assert colors_5["wall_visible"] == (180, 135, 150)
+    
+    # Test fallback wrapping (level 6 should wrap to level 1)
+    game.player.current_level = 6
+    colors_6 = game.get_floor_colors()
+    assert colors_6["wall_visible"] == (150, 140, 180)
+
+
 

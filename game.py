@@ -106,6 +106,46 @@ class Game:
         if len(self.message_log) > 3:
             self.message_log.pop(0)
 
+    def get_floor_colors(self) -> dict:
+        """Get the wall and floor pastel colors for the current floor level"""
+        palettes = {
+            1: { # Soft Lavender/Purple
+                "wall_visible": (150, 140, 180),
+                "floor_visible": (200, 190, 220),
+                "wall_explored": (75, 70, 90),
+                "floor_explored": (100, 95, 110),
+            },
+            2: { # Soft Mint/Green
+                "wall_visible": (130, 170, 140),
+                "floor_visible": (180, 210, 190),
+                "wall_explored": (65, 85, 70),
+                "floor_explored": (90, 105, 95),
+            },
+            3: { # Soft Sky Blue
+                "wall_visible": (130, 160, 180),
+                "floor_visible": (180, 205, 220),
+                "wall_explored": (65, 80, 90),
+                "floor_explored": (90, 102, 110),
+            },
+            4: { # Soft Peach/Orange
+                "wall_visible": (180, 145, 130),
+                "floor_visible": (220, 195, 180),
+                "wall_explored": (90, 72, 65),
+                "floor_explored": (110, 97, 90),
+            },
+            5: { # Soft Rose/Pink
+                "wall_visible": (180, 135, 150),
+                "floor_visible": (220, 185, 195),
+                "wall_explored": (90, 67, 75),
+                "floor_explored": (110, 92, 97),
+            }
+        }
+        level = self.player.current_level
+        if level not in palettes:
+            wrapped_level = ((level - 1) % 5) + 1
+            return palettes[wrapped_level]
+        return palettes[level]
+
     def compute_fov(self):
         """Compute field of view using simple line-of-sight"""
         self.visible.fill(False)
@@ -267,28 +307,31 @@ class Game:
             # Compute FOV
             self.compute_fov()
 
+            # Get pastel colors for the current level
+            colors = self.get_floor_colors()
+
             # Draw map
             for y in range(MAP_HEIGHT):
                 for x in range(MAP_WIDTH):
                     tile = self.dungeon.tiles[y][x]
                     if self.visible[y, x]:
                         if tile == TileType.WALL:
-                            self.console.print(x, y, '#', (100, 100, 100))
+                            self.console.print(x, y, '#', colors["wall_visible"])
                         elif tile == TileType.CLOSED_DOOR:
                             self.console.print(x, y, '+', (139, 90, 43))
                         elif tile == TileType.OPEN_DOOR:
                             self.console.print(x, y, '/', (139, 90, 43))
                         else:  # Floor
-                            self.console.print(x, y, '.', (150, 150, 150))
+                            self.console.print(x, y, '.', colors["floor_visible"])
                     elif self.explored[y, x]:
                         if tile == TileType.WALL:
-                            self.console.print(x, y, '#', (50, 50, 50))
+                            self.console.print(x, y, '#', colors["wall_explored"])
                         elif tile == TileType.CLOSED_DOOR:
                             self.console.print(x, y, '+', (80, 50, 25))
                         elif tile == TileType.OPEN_DOOR:
                             self.console.print(x, y, '/', (80, 50, 25))
                         else:  # Floor
-                            self.console.print(x, y, '.', (80, 80, 80))
+                            self.console.print(x, y, '.', colors["floor_explored"])
 
             # Draw stairs
             if self.visible[self.dungeon.stairs_pos[1], self.dungeon.stairs_pos[0]]:
