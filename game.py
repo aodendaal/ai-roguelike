@@ -12,7 +12,7 @@ from constants import (
 )
 from entities import Player
 from dungeon import Dungeon
-
+from leaderboard import Leaderboard
 
 class GameState(Enum):
     PLAYING = 1
@@ -32,6 +32,10 @@ class Game:
         self.explored = None
         self.message_log = []
         self.turn_count = 0
+        self.death_cause = None  # Track which monster killed the player
+        self.leaderboard = Leaderboard()
+        self.input_buffer = ""  # For name input
+        self.entering_name = False  # Flag for name entry mode
 
     def new_game(self):
         """Start a new game"""
@@ -41,6 +45,9 @@ class Game:
         self.message_log = []
         self.turn_count = 0
         self.state = GameState.PLAYING
+        self.death_cause = None
+        self.input_buffer = ""
+        self.entering_name = False
         self.load_level(1)
         self.add_message("Welcome to the Roguelike Dungeon!")
         self.add_message("Find the Amulet of Yendor on the 5th level and escape!")
@@ -130,6 +137,7 @@ class Game:
                             self.load_level(self.player.current_level + 1)
                         elif self.player.has_amulet:
                             self.state = GameState.GAME_WON
+                            self.entering_name = True
                             return True
                         else:
                             self.add_message("You need the Amulet of Yendor first!")
@@ -203,6 +211,7 @@ class Game:
                     # Attack player
                     damage = monster.attack(self.player)
                     self.add_message(f"{monster.name} hits you for {damage} damage!")
+                    self.death_cause = monster.name  # Track what killed the player
                 elif self.dungeon.is_walkable(new_x, new_y):
                     monster.move(dx, dy)
 
@@ -212,6 +221,7 @@ class Game:
         if self.player.health <= 0:
             self.state = GameState.PLAYER_DEAD
             self.add_message("You died!")
+            self.entering_name = True
 
     def render(self):
         """Render the game to the console"""
@@ -261,7 +271,13 @@ class Game:
         for i, msg in enumerate(self.message_log):
             self.console.print(0, ui_y + i, msg, (200, 200, 200))
 
-        if self.state == GameState.PLAYER_DEAD:
+        if self.entering_name:
+            # Show name entry screen
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 2, "Enter your name:", (255, 255, 255))
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2, self.input_buffer + "_", (200, 255, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
+                             "Press Enter to confirm", (200, 200, 200))
+        elif self.state == GameState.PLAYER_DEAD:
             self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2, "YOU DIED!", (255, 0, 0))
             self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
                              "Press R to restart or Q to quit", (200, 200, 200))
@@ -278,12 +294,44 @@ class Game:
             if event.type == "QUIT":
                 return False
             elif event.type == "KEYDOWN":
-                if event.sym == tcod.event.K_r:
-                    self.new_game()
-                    return True
-                elif event.sym == tcod.event.K_q or event.sym == tcod.event.K_ESCAPE:
-                    return False
+                if self.entering_name:
+                    # Handle name input
+                    if event.sym == tcod.event.K_RETURN:
+                        if self.input_buffer.strip():
+                            self.save_score()
+                            self.entering_name = False
+                            return True
+                    elif event.sym == tcod.event.K_BACKSPACE:
+                        self.input_buffer = self.input_buffer[:-1]
+                    elif event.sym == tcod.event.K_ESCAPE:
+                        # Skip entering name
+                        self.save_score()
+                        self.entering_name = False
+                        return True
+                    elif hasattr(event, 'text') and len(self.input_buffer) < 20:
+                        if event.text and event.text.isprintable():
+                            self.input_buffer += event.text
+                else:
+                    # Handle game over input
+                    if event.sym == tcod.event.K_r:
+                        self.new_game()
+                        return True
+                    elif event.sym == tcod.event.K_q or event.sym == tcod.event.K_ESCAPE:
+                        return False
         return True
+
+    def save_score(self):
+        """Save the current score to the leaderboard"""
+        player_name = self.input_buffer.strip() or "Anonymous"
+        outcome = "won" if self.state == GameState.GAME_WON else "died"
+        
+        self.leaderboard.add_entry(
+            player_name=player_name,
+            gold=self.player.gold,
+            level=self.player.current_level,
+            outcome=outcome,
+            death_cause=self.death_cause
+        )
 
     def run(self):
         """Main game loop"""

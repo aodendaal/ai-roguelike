@@ -78,6 +78,11 @@ pip install -r requirements.txt
 python roguelike.py
 ```
 
+This will open the main menu where you can:
+1. **Play Game** - Start a new adventure
+2. **View Leaderboard** - See your top scores
+3. **Exit** - Quit the application
+
 ## Testing
 
 The project includes comprehensive unit tests using pytest. Run tests with:
@@ -97,6 +102,7 @@ Test files are in the `tests/` directory:
 - `test_items.py` - Item pickup and effects
 - `test_monsters.py` - Monster initialization and stats
 - `test_dungeon.py` - Dungeon generation and layout
+- `test_leaderboard.py` - Leaderboard persistence and sorting
 
 ## Controls
 
@@ -137,6 +143,26 @@ Walk over items to pick them up:
 - **HP**: Your health. If it reaches 0, you die
 - **STR**: Your attack power. Increased by weapons, or temporarily by potions
 - **Gold**: Collected from the dungeon (used for scoring)
+
+## Leaderboard
+
+Your scores are automatically saved to a persistent leaderboard! After each game (win or loss), you'll be prompted to enter your name. Your score will be recorded with:
+
+- Player name
+- Gold collected
+- Level reached
+- Outcome (Won by finding Amulet or Died, and if died, which monster killed you)
+
+### Viewing the Leaderboard
+
+Run the game and select "View Leaderboard" from the main menu to see your top scores. The leaderboard is sorted by:
+
+1. **Wins first** - Winning games always rank above losses
+2. **Gold second** - Within each category, higher gold scores rank higher
+
+### Leaderboard Files
+
+Scores are stored in `leaderboard.json` in the game directory. You can manually edit or backup this file.
 
 ## Game Difficulty
 
