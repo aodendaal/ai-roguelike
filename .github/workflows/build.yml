@@ -3,12 +3,17 @@ name: Build Executables
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -51,3 +56,42 @@ jobs:
           dist/roguelike
           dist/roguelike.exe
         if-no-files-found: ignore
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir release-assets
+          # Copy macos binary
+          cp artifacts/roguelike-macos-latest/roguelike release-assets/roguelike-mac
+          chmod +x release-assets/roguelike-mac
+          # Copy windows binary
+          cp artifacts/roguelike-windows-latest/roguelike.exe release-assets/roguelike.exe
+          ls -la release-assets
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('latest-run-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('Release {0}', github.ref_name) || format('Latest Build (Run {0})', github.run_number) }}
+          draft: false
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          files: |
+            release-assets/roguelike-mac
+            release-assets/roguelike.exe
+          body: |
+            Automatically compiled executables for macOS and Windows.
+            
+            - **Commit**: ${{ github.sha }}
+            - **Build Run**: ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
