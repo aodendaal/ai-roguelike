@@ -425,8 +425,21 @@ class Game:
 
         # Draw UI
         ui_y = MAP_HEIGHT
-        ui_text = f"Level: {self.player.current_level}/5 | HP: {self.player.health}/{self.player.max_health} | STR: {self.player.current_strength} | Gold: {self.player.gold}"
-        self.console.print(0, ui_y, ui_text, (255, 255, 255))
+        part1 = f"Level: {self.player.current_level}/5 | "
+        part2 = f"HP: {self.player.health}/{self.player.max_health}"
+        part3 = f" | STR: {self.player.current_strength} | Gold: {self.player.gold}"
+
+        hp_pct = self.player.health / self.player.max_health if self.player.max_health > 0 else 0
+        if hp_pct <= 0.15:
+            hp_color = (255, 0, 0)      # Red
+        elif hp_pct <= 0.50:
+            hp_color = (255, 165, 0)    # Orange
+        else:
+            hp_color = (0, 255, 0)      # Green
+
+        self.console.print(0, ui_y, part1, (255, 255, 255))
+        self.console.print(len(part1), ui_y, part2, hp_color)
+        self.console.print(len(part1) + len(part2), ui_y, part3, (255, 255, 255))
 
         ui_y += 1
         for i, msg in enumerate(self.message_log):
