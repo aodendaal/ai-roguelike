@@ -318,4 +318,43 @@ def test_player_opens_door():
     assert "You open the door." in game.message_log
 
 
+def test_fov_sees_non_walkable_tiles():
+    """Test that player FOV sees walls and closed doors, but not beyond them"""
+    from dungeon import TileType
+    from constants import MAP_WIDTH, MAP_HEIGHT
+    
+    game = Game()
+    game.state = GameState.PLAYING
+    game.dungeon = Dungeon(MAP_WIDTH, MAP_HEIGHT)
+    
+    # Initialize visible/explored arrays
+    import numpy as np
+    game.visible = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    game.explored = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    
+    # Set player at (5, 5)
+    game.player.x, game.player.y = 5, 5
+    
+    # Fill background with walkable floor
+    for y in range(MAP_HEIGHT):
+        for x in range(MAP_WIDTH):
+            game.dungeon.tiles[y][x] = TileType.FLOOR
+            
+    # Put a closed door at (5, 7) and a wall at (5, 8)
+    game.dungeon.tiles[5][7] = TileType.CLOSED_DOOR
+    game.dungeon.tiles[5][8] = TileType.WALL
+    
+    # Compute FOV
+    game.compute_fov()
+    
+    # The floor right next to the player (5, 6) should be visible
+    assert game.visible[5, 6]
+    
+    # The closed door at (5, 7) should be visible
+    assert game.visible[5, 7]
+    
+    # The wall at (5, 8) should NOT be visible because the closed door at (5, 7) blocked the line of sight
+    assert not game.visible[5, 8]
+
+
 

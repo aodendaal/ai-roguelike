@@ -132,11 +132,11 @@ class Game:
         
         x, y = x1, y1
         while True:
-            if not self.dungeon.is_walkable(x, y) and (x, y) != (x1, y1):
-                return False
-            
             if x == x2 and y == y2:
                 return True
+                
+            if not self.dungeon.is_walkable(x, y) and (x, y) != (x1, y1):
+                return False
             
             e2 = 2 * err
             if e2 > -dy:
