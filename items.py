@@ -37,9 +37,17 @@ class Potion(Item):
         return f"Picked up {self.get_description()}."
 
     def quaff(self, player) -> str:
-        player.add_status_effect(self.stat, self.amount, self.duration)
-        sign = "+" if self.amount > 0 else ""
-        return f"Drank potion: {sign}{self.amount} {self.stat} for {self.duration} turns!"
+        if self.stat == "health":
+            if self.amount > 0:
+                player.health = min(player.max_health, player.health + self.amount)
+                return f"Drank potion: gain {self.amount} health"
+            else:
+                player.health = player.health + self.amount
+                return f"Drank potion: lose {abs(self.amount)} health"
+        else:
+            player.add_status_effect(self.stat, self.amount, self.duration)
+            sign = "+" if self.amount > 0 else ""
+            return f"Drank potion: {sign}{self.amount} {self.stat} for {self.duration} turns!"
 
 
 class Weapon(Item):

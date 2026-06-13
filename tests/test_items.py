@@ -70,6 +70,29 @@ class TestPotion:
         assert "3" in quaff_msg
         assert player.current_strength == 15  # 10 + 5 from potion
 
+    def test_health_potion_quaff(self):
+        """Test quaffing a health potion modifies health directly and does not have a duration"""
+        player = Player(0, 0)
+        player.health = 50
+        
+        # Positive health potion
+        heal_potion = Potion(0, 0, "health", 15, 3)
+        msg = heal_potion.quaff(player)
+        assert "gain 15 health" in msg.lower()
+        assert player.health == 65
+        assert "health" not in player.status_effects or not player.status_effects["health"]
+        
+        # Capping at max health
+        player.health = 95
+        msg = heal_potion.quaff(player)
+        assert player.health == 100
+        
+        # Negative health potion (damage)
+        harm_potion = Potion(0, 0, "health", -10, 2)
+        msg = harm_potion.quaff(player)
+        assert "lose 10 health" in msg.lower()
+        assert player.health == 90
+
 
 class TestWeapon:
     """Test Weapon item"""

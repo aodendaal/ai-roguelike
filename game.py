@@ -262,6 +262,8 @@ class Game:
                         self.weapons_picked_up += 1
                     self.add_message(msg)
                     items_to_remove.append(item)
+                else:
+                    self.add_message(f"You see {item.get_description()} here.")
 
         for item in items_to_remove:
             self.dungeon.items.remove(item)

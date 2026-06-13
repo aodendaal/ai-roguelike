@@ -519,5 +519,13 @@ def test_inventory_and_quaff_menus(monkeypatch):
     game.pickup_item()
     assert "nothing here" in game.message_log[-1].lower()
 
+    # 8. Test stepping over a potion shows a message
+    from items import Potion
+    potion = Potion(game.player.x + 1, game.player.y, "strength", 3, 5)
+    potion.color_name = "blue"
+    game.dungeon.items = [potion]
+    game.move_player(1, 0)
+    assert "you see a blue potion here" in game.message_log[-1].lower()
+
 
 
