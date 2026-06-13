@@ -15,9 +15,12 @@ from dungeon import Dungeon
 from leaderboard import Leaderboard
 
 class GameState(Enum):
-    PLAYING = 1
-    PLAYER_DEAD = 2
-    GAME_WON = 3
+    MENU = 1
+    ENTERING_NAME = 2
+    PLAYING = 3
+    PLAYER_DEAD = 4
+    GAME_WON = 5
+    VIEW_LEADERBOARD = 6
 
 
 class Game:
@@ -27,7 +30,7 @@ class Game:
         self.context = None
         self.player = Player(0, 0)
         self.dungeon = None
-        self.state = GameState.PLAYING
+        self._state = GameState.MENU
         self.visible = None
         self.explored = None
         self.message_log = []
@@ -35,20 +38,32 @@ class Game:
         self.death_cause = None  # Track which monster killed the player
         self.leaderboard = Leaderboard()
         self.input_buffer = ""  # For name input
-        self._entering_name = False  # Flag for name entry mode
+        self.player_name = ""
+
+    @property
+    def state(self) -> GameState:
+        return self._state
+
+    @state.setter
+    def state(self, value: GameState):
+        old_state = getattr(self, "_state", None)
+        self._state = value
+        if self.context and hasattr(self.context, "sdl_window") and self.context.sdl_window:
+            if value == GameState.ENTERING_NAME and old_state != GameState.ENTERING_NAME:
+                self.context.sdl_window.start_text_input()
+            elif old_state == GameState.ENTERING_NAME and value != GameState.ENTERING_NAME:
+                self.context.sdl_window.stop_text_input()
 
     @property
     def entering_name(self) -> bool:
-        return self._entering_name
+        return self.state == GameState.ENTERING_NAME
 
     @entering_name.setter
     def entering_name(self, value: bool):
-        self._entering_name = value
-        if self.context and hasattr(self.context, "sdl_window") and self.context.sdl_window:
-            if value:
-                self.context.sdl_window.start_text_input()
-            else:
-                self.context.sdl_window.stop_text_input()
+        if value:
+            self.state = GameState.ENTERING_NAME
+        else:
+            self.state = GameState.PLAYING
 
     def new_game(self):
         """Start a new game"""
@@ -57,13 +72,17 @@ class Game:
         self.player.has_amulet = False
         self.message_log = []
         self.turn_count = 0
-        self.state = GameState.PLAYING
+        self._state = GameState.PLAYING
         self.death_cause = None
-        self.input_buffer = ""
-        self.entering_name = False
         self.load_level(1)
         self.add_message("Welcome to the Roguelike Dungeon!")
         self.add_message("Find the Amulet of Yendor on the 5th level and escape!")
+
+    def start_game_with_name(self, name: str):
+        """Initialize game stats and start the game with the given player name"""
+        self.player_name = name
+        self.new_game()
+        self.state = GameState.PLAYING
 
     def load_level(self, level: int):
         """Load a dungeon level"""
@@ -234,62 +253,88 @@ class Game:
         if self.player.health <= 0:
             self.state = GameState.PLAYER_DEAD
             self.add_message("You died!")
-            self.entering_name = True
+            self.save_score()
 
     def render(self):
         """Render the game to the console"""
         self.console.clear()
 
-        # Compute FOV
-        self.compute_fov()
+        if self.state == GameState.MENU:
+            self.console.print(SCREEN_WIDTH // 2 - 12, SCREEN_HEIGHT // 2 - 4, "=== ROGUELIKE DUNGEON ===", (255, 215, 0))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 - 1, "1. Play New Game", (200, 200, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 1, "2. View Leaderboard", (200, 200, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 3, "3. Exit", (200, 200, 200))
+            
+        elif self.state == GameState.VIEW_LEADERBOARD:
+            self.console.print(SCREEN_WIDTH // 2 - 10, 4, "=== LEADERBOARD ===", (255, 215, 0))
+            
+            top_entries = self.leaderboard.get_top_entries(10)
+            start_y = 7
+            
+            headers = f"{'Rank':4} | {'Name':20} | {'Level':9} | {'Gold':5} | {'Result'}"
+            self.console.print(5, start_y, headers, (255, 215, 0))
+            self.console.print(5, start_y + 1, "-" * 70, (150, 150, 150))
+            
+            for idx, entry in enumerate(top_entries):
+                y = start_y + 2 + idx
+                result = "WON - Found Amulet" if entry.outcome == "won" else f"DIED - {entry.death_cause}"
+                rank_str = f"{idx + 1:2}."
+                line = f"{rank_str:4} | {entry.player_name:20} | Level {entry.level}/5 | {entry.gold:5} | {result}"
+                self.console.print(5, y, line, (200, 200, 200))
+                
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT - 4, "Press Escape to return to menu", (150, 150, 150))
+            
+        elif self.state == GameState.ENTERING_NAME:
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 4, "=== NEW CHARACTER ===", (255, 215, 0))
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 1, "Enter your name:", (255, 255, 255))
+            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 + 1, self.input_buffer + "_", (200, 255, 200))
+            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 3, "Press Enter to start, Escape to cancel", (150, 150, 150))
+            
+        elif self.state == GameState.PLAYING:
+            # Compute FOV
+            self.compute_fov()
 
-        # Draw map
-        for y in range(MAP_HEIGHT):
-            for x in range(MAP_WIDTH):
-                if self.visible[y, x]:
-                    if self.dungeon.tiles[y][x].value == 0:  # Wall
-                        self.console.print(x, y, '#', (100, 100, 100))
-                    else:  # Floor
-                        self.console.print(x, y, '.', (150, 150, 150))
-                elif self.explored[y, x]:
-                    if self.dungeon.tiles[y][x].value == 0:  # Wall
-                        self.console.print(x, y, '#', (50, 50, 50))
-                    else:  # Floor
-                        self.console.print(x, y, '.', (80, 80, 80))
+            # Draw map
+            for y in range(MAP_HEIGHT):
+                for x in range(MAP_WIDTH):
+                    if self.visible[y, x]:
+                        if self.dungeon.tiles[y][x].value == 0:  # Wall
+                            self.console.print(x, y, '#', (100, 100, 100))
+                        else:  # Floor
+                            self.console.print(x, y, '.', (150, 150, 150))
+                    elif self.explored[y, x]:
+                        if self.dungeon.tiles[y][x].value == 0:  # Wall
+                            self.console.print(x, y, '#', (50, 50, 50))
+                        else:  # Floor
+                            self.console.print(x, y, '.', (80, 80, 80))
 
-        # Draw stairs
-        if self.visible[self.dungeon.stairs_pos[1], self.dungeon.stairs_pos[0]]:
-            self.console.print(self.dungeon.stairs_pos[0], self.dungeon.stairs_pos[1],
-                             '>', (200, 200, 200))
+            # Draw stairs
+            if self.visible[self.dungeon.stairs_pos[1], self.dungeon.stairs_pos[0]]:
+                self.console.print(self.dungeon.stairs_pos[0], self.dungeon.stairs_pos[1],
+                                 '>', (200, 200, 200))
 
-        # Draw items
-        for item in self.dungeon.items:
-            if self.visible[item.y, item.x]:
-                self.console.print(item.x, item.y, item.char, item.color)
+            # Draw items
+            for item in self.dungeon.items:
+                if self.visible[item.y, item.x]:
+                    self.console.print(item.x, item.y, item.char, item.color)
 
-        # Draw monsters
-        for monster in self.dungeon.monsters:
-            if self.visible[monster.y, monster.x]:
-                self.console.print(monster.x, monster.y, monster.char, monster.color)
+            # Draw monsters
+            for monster in self.dungeon.monsters:
+                if self.visible[monster.y, monster.x]:
+                    self.console.print(monster.x, monster.y, monster.char, monster.color)
 
-        # Draw player
-        self.console.print(self.player.x, self.player.y, self.player.char, self.player.color)
+            # Draw player
+            self.console.print(self.player.x, self.player.y, self.player.char, self.player.color)
 
-        # Draw UI
-        ui_y = MAP_HEIGHT
-        ui_text = f"Level: {self.player.current_level}/5 | HP: {self.player.health}/{self.player.max_health} | STR: {self.player.current_strength} | Gold: {self.player.gold}"
-        self.console.print(0, ui_y, ui_text, (255, 255, 255))
+            # Draw UI
+            ui_y = MAP_HEIGHT
+            ui_text = f"Level: {self.player.current_level}/5 | HP: {self.player.health}/{self.player.max_health} | STR: {self.player.current_strength} | Gold: {self.player.gold}"
+            self.console.print(0, ui_y, ui_text, (255, 255, 255))
 
-        ui_y += 1
-        for i, msg in enumerate(self.message_log):
-            self.console.print(0, ui_y + i, msg, (200, 200, 200))
+            ui_y += 1
+            for i, msg in enumerate(self.message_log):
+                self.console.print(0, ui_y + i, msg, (200, 200, 200))
 
-        if self.entering_name:
-            # Show name entry screen
-            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2 - 2, "Enter your name:", (255, 255, 255))
-            self.console.print(SCREEN_WIDTH // 2 - 15, SCREEN_HEIGHT // 2, self.input_buffer + "_", (200, 255, 200))
-            self.console.print(SCREEN_WIDTH // 2 - 20, SCREEN_HEIGHT // 2 + 2,
-                             "Press Enter to confirm", (200, 200, 200))
         elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
             # Clear console to draw a clean leaderboard screen
             self.console.clear()
@@ -312,7 +357,7 @@ class Game:
                 y = start_y + 2 + idx
                 
                 # Highlight current player's entry
-                is_current = (entry.player_name == self.input_buffer.strip() and
+                is_current = (entry.player_name == self.player_name and
                               entry.gold == self.player.gold and
                               entry.level == self.player.current_level)
                 
@@ -325,45 +370,92 @@ class Game:
                 
             footer_y = SCREEN_HEIGHT - 4
             self.console.print(SCREEN_WIDTH // 2 - 20, footer_y,
-                             "Press R to restart or Q to quit", (200, 200, 200))
+                             "Press R to return to menu or Q to quit", (200, 200, 200))
 
         self.context.present(self.console)
 
-    def game_over_input(self) -> bool:
-        """Handle input when game is over"""
+    def process_events(self) -> bool:
+        """Process all pending events. Returns False to exit the game."""
         for event in tcod.event.get():
             if event.type == "QUIT":
                 return False
-            elif event.type == "KEYDOWN":
-                if self.entering_name:
-                    # Handle name input navigation/control keys
+                
+            if self.state == GameState.MENU:
+                if event.type == "KEYDOWN":
+                    if event.sym in (tcod.event.K_1, tcod.event.K_KP_1):
+                        self.input_buffer = ""
+                        self.state = GameState.ENTERING_NAME
+                    elif event.sym in (tcod.event.K_2, tcod.event.K_KP_2):
+                        self.leaderboard.load()
+                        self.state = GameState.VIEW_LEADERBOARD
+                    elif event.sym in (tcod.event.K_3, tcod.event.K_KP_3, tcod.event.K_ESCAPE, tcod.event.K_q):
+                        return False
+                        
+            elif self.state == GameState.VIEW_LEADERBOARD:
+                if event.type == "KEYDOWN":
+                    if event.sym in (tcod.event.K_ESCAPE, tcod.event.K_RETURN, tcod.event.K_SPACE):
+                        self.state = GameState.MENU
+                        
+            elif self.state == GameState.ENTERING_NAME:
+                if event.type == "KEYDOWN":
                     if event.sym == tcod.event.K_RETURN:
                         if self.input_buffer.strip():
-                            self.save_score()
-                            self.entering_name = False
-                            return True
+                            self.start_game_with_name(self.input_buffer.strip())
                     elif event.sym == tcod.event.K_BACKSPACE:
                         self.input_buffer = self.input_buffer[:-1]
                     elif event.sym == tcod.event.K_ESCAPE:
-                        # Skip entering name
-                        self.save_score()
-                        self.entering_name = False
+                        self.state = GameState.MENU
+                elif isinstance(event, tcod.event.TextInput):
+                    if len(self.input_buffer) < 20:
+                        self.input_buffer += event.text
+                        
+            elif self.state == GameState.PLAYING:
+                if event.type == "KEYDOWN":
+                    if event.sym == tcod.event.K_ESCAPE:
+                        self.state = GameState.MENU
                         return True
-                else:
-                    # Handle game over input
+                    elif event.sym == tcod.event.K_UP:
+                        self.move_player(0, -1)
+                    elif event.sym == tcod.event.K_DOWN:
+                        self.move_player(0, 1)
+                    elif event.sym == tcod.event.K_LEFT:
+                        self.move_player(-1, 0)
+                    elif event.sym == tcod.event.K_RIGHT:
+                        self.move_player(1, 0)
+                    elif event.sym == tcod.event.K_PERIOD:
+                        # Try to go down stairs
+                        if self.dungeon.stairs_pos and (self.player.x, self.player.y) == self.dungeon.stairs_pos:
+                            if self.player.current_level < DUNGEON_DEPTH:
+                                self.load_level(self.player.current_level + 1)
+                            elif self.player.has_amulet:
+                                self.state = GameState.GAME_WON
+                                self.save_score()
+                                return True
+                            else:
+                                self.add_message("You need the Amulet of Yendor first!")
+                        else:
+                            self.add_message("No stairs here!")
+                    self.update_game()
+                    
+            elif self.state in (GameState.PLAYER_DEAD, GameState.GAME_WON):
+                if event.type == "KEYDOWN":
                     if event.sym == tcod.event.K_r:
-                        self.new_game()
-                        return True
-                    elif event.sym == tcod.event.K_q or event.sym == tcod.event.K_ESCAPE:
+                        self.state = GameState.MENU
+                    elif event.sym in (tcod.event.K_q, tcod.event.K_ESCAPE):
                         return False
-            elif isinstance(event, tcod.event.TextInput) and self.entering_name:
-                if len(self.input_buffer) < 20:
-                    self.input_buffer += event.text
         return True
+
+    def handle_input(self) -> bool:
+        """Handle player input. Provided for test compatibility."""
+        return self.process_events()
+
+    def game_over_input(self) -> bool:
+        """Handle game over input. Provided for test compatibility."""
+        return self.process_events()
 
     def save_score(self):
         """Save the current score to the leaderboard"""
-        player_name = self.input_buffer.strip() or "Anonymous"
+        player_name = self.player_name.strip() if getattr(self, "player_name", None) else "Anonymous"
         outcome = "won" if self.state == GameState.GAME_WON else "died"
         
         self.leaderboard.add_entry(
@@ -410,14 +502,9 @@ class Game:
             ctx_kwargs["tileset"] = tileset
         
         with tcod.context.new(**ctx_kwargs) as self.context:
-            self.new_game()
-
+            self.state = GameState.MENU
+            
             while True:
                 self.render()
-
-                if self.state == GameState.PLAYING:
-                    if not self.handle_input():
-                        break
-                else:
-                    if not self.game_over_input():
-                        break
+                if not self.process_events():
+                    break

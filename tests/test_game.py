@@ -11,6 +11,7 @@ from PIL import Image
 from game import Game, GameState
 from create_tileset import create_tileset
 from leaderboard import LEADERBOARD_FILE
+from dungeon import Dungeon
 
 
 @pytest.fixture(autouse=True)
@@ -49,7 +50,7 @@ def test_game_initialization():
     assert game.context is None
     assert game.player is not None
     assert game.dungeon is None
-    assert game.state == GameState.PLAYING
+    assert game.state == GameState.MENU
     assert game.visible is None
     assert game.explored is None
     assert len(game.message_log) == 0
@@ -169,12 +170,12 @@ def test_game_over_input_backspace(monkeypatch):
 
 
 def test_game_over_input_return(monkeypatch):
-    """Test that game_over_input handles Return key to save score and exit name entry"""
+    """Test that game_over_input handles Return key to start the game and save name"""
     game = Game()
     game.entering_name = True
     game.input_buffer = "Alice"
     
-    # Mock leaderboard.add_entry
+    # Mock leaderboard.add_entry (should not be called yet)
     saved_entries = []
     monkeypatch.setattr(game.leaderboard, "add_entry", lambda **kwargs: saved_entries.append(kwargs))
     
@@ -184,8 +185,9 @@ def test_game_over_input_return(monkeypatch):
     res = game.game_over_input()
     assert res is True
     assert not game.entering_name
-    assert len(saved_entries) == 1
-    assert saved_entries[0]["player_name"] == "Alice"
+    assert game.state == GameState.PLAYING
+    assert game.player_name == "Alice"
+    assert len(saved_entries) == 0
 
 
 def test_entering_name_toggles_text_input():
@@ -218,6 +220,68 @@ def test_entering_name_toggles_text_input():
     game.entering_name = False
     assert mock_ctx.sdl_window.start_called == 1
     assert mock_ctx.sdl_window.stop_called == 1
+
+
+def test_game_menu_navigation(monkeypatch):
+    """Test that main menu keys transition to correct states"""
+    game = Game()
+    assert game.state == GameState.MENU
+    
+    # Pressing 1 transitions to ENTERING_NAME
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_1, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    res = game.process_events()
+    assert res is True
+    assert game.state == GameState.ENTERING_NAME
+    
+    # Pressing Escape in ENTERING_NAME transitions back to MENU
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_ESCAPE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    res = game.process_events()
+    assert res is True
+    assert game.state == GameState.MENU
+    
+    # Pressing 2 transitions to VIEW_LEADERBOARD
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_2, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    res = game.process_events()
+    assert res is True
+    assert game.state == GameState.VIEW_LEADERBOARD
+    
+    # Pressing Space in VIEW_LEADERBOARD transitions back to MENU
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.K_SPACE, scancode=0, mod=0, repeat=False)]
+    monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
+    res = game.process_events()
+    assert res is True
+    assert game.state == GameState.MENU
+
+
+def test_player_death_saves_score(monkeypatch):
+    """Test that player death automatically saves score and transitions to PLAYER_DEAD"""
+    game = Game()
+    game.player_name = "Bob"
+    game.state = GameState.PLAYING
+    
+    import numpy as np
+    from constants import MAP_WIDTH, MAP_HEIGHT
+    game.visible = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    game.explored = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    
+    # Mock dungeon so we can update game
+    game.dungeon = Dungeon(MAP_WIDTH, MAP_HEIGHT)
+    game.player.health = 10
+    
+    saved_entries = []
+    monkeypatch.setattr(game.leaderboard, "add_entry", lambda **kwargs: saved_entries.append(kwargs))
+    
+    # Kill the player
+    game.player.health = 0
+    game.update_game()
+    
+    assert game.state == GameState.PLAYER_DEAD
+    assert len(saved_entries) == 1
+    assert saved_entries[0]["player_name"] == "Bob"
+    assert saved_entries[0]["outcome"] == "died"
 
 
 
