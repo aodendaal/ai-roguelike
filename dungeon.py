@@ -136,7 +136,7 @@ class Dungeon:
                         self.items.append(Weapon(x, y, random.randint(2, 5)))
                     elif random.random() < 0.5:
                         self.items.append(Potion(x, y, random.choice(["strength", "health"]),
-                                               random.choice([-2, 2, 3, 5]), random.randint(3, 8)))
+                                               random.choice([-2, 2, 3, 5]), random.randint(13, 38)))
                     else:
                         self.items.append(Gold(x, y, random.randint(5, 20)))
                 else:
