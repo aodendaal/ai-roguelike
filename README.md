@@ -38,6 +38,7 @@ The code is organized into modular files for easy customization:
 You can easily add new monsters and items:
 
 **Add a new monster** (in `monsters.py`):
+
 ```python
 class Dragon(Monster):
     """A fire-breathing dragon"""
@@ -46,6 +47,7 @@ class Dragon(Monster):
 ```
 
 **Add a new item** (in `items.py`):
+
 ```python
 class Shield(Item):
     """Shield that reduces damage taken"""
@@ -53,7 +55,7 @@ class Shield(Item):
         super().__init__("Shield", x, y)
         self.char = '['
         self.color = (100, 100, 200)
-    
+
     def pick_up(self, player):
         player.defense_bonus += 2
         return "Gained Shield! +2 Defense"
@@ -75,6 +77,26 @@ pip install -r requirements.txt
 ```bash
 python roguelike.py
 ```
+
+## Testing
+
+The project includes comprehensive unit tests using pytest. Run tests with:
+
+```bash
+pytest
+```
+
+For verbose output with coverage:
+
+```bash
+pytest -v --cov=. --cov-report=term-missing
+```
+
+Test files are in the `tests/` directory:
+- `test_entities.py` - Player and Actor tests
+- `test_items.py` - Item pickup and effects
+- `test_monsters.py` - Monster initialization and stats
+- `test_dungeon.py` - Dungeon generation and layout
 
 ## Controls
 
