@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-13, macos-14, windows-latest]
 
     steps:
     - name: Checkout repository
@@ -39,7 +39,7 @@ jobs:
         pip install pyinstaller
 
     - name: Build with PyInstaller (macOS)
-      if: matrix.os == 'macos-latest'
+      if: startsWith(matrix.os, 'macos')
       run: |
         pyinstaller --onefile --add-data "deja10x10_gs_tc.png:." roguelike.py
 
@@ -71,9 +71,12 @@ jobs:
       - name: Prepare Release Assets
         run: |
           mkdir release-assets
-          # Copy macos binary
-          cp artifacts/roguelike-macos-latest/roguelike release-assets/roguelike-mac
-          chmod +x release-assets/roguelike-mac
+          # Copy Silicon Mac binary
+          cp artifacts/roguelike-macos-14/roguelike release-assets/roguelike-silicon-mac
+          chmod +x release-assets/roguelike-silicon-mac
+          # Copy Intel Mac binary
+          cp artifacts/roguelike-macos-13/roguelike release-assets/roguelike-intel-mac
+          chmod +x release-assets/roguelike-intel-mac
           # Copy windows binary
           cp artifacts/roguelike-windows-latest/roguelike.exe release-assets/roguelike.exe
           ls -la release-assets
@@ -86,7 +89,8 @@ jobs:
           draft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           files: |
-            release-assets/roguelike-mac
+            release-assets/roguelike-silicon-mac
+            release-assets/roguelike-intel-mac
             release-assets/roguelike.exe
           body: |
             Automatically compiled executables for macOS and Windows.
