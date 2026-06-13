@@ -2,6 +2,8 @@
 Game constants and configuration
 """
 
+VERSION = "0.1.0"
+
 # Screen dimensions
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50

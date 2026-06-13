@@ -8,7 +8,7 @@ from enum import Enum
 
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT, MAP_WIDTH, MAP_HEIGHT, 
-    DUNGEON_DEPTH, FOV_RADIUS
+    DUNGEON_DEPTH, FOV_RADIUS, VERSION
 )
 from entities import Player
 from dungeon import Dungeon, TileType
@@ -294,6 +294,8 @@ class Game:
             self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 - 1, "1. Play New Game", (200, 200, 200))
             self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 1, "2. View Leaderboard", (200, 200, 200))
             self.console.print(SCREEN_WIDTH // 2 - 10, SCREEN_HEIGHT // 2 + 3, "3. Exit", (200, 200, 200))
+            version_str = f"v{VERSION}"
+            self.console.print(SCREEN_WIDTH - len(version_str) - 2, SCREEN_HEIGHT - 2, version_str, (100, 100, 100))
             
         elif self.state == GameState.VIEW_LEADERBOARD:
             self.console.print(SCREEN_WIDTH // 2 - 10, 4, "=== LEADERBOARD ===", (255, 215, 0))
