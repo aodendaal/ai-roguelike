@@ -55,7 +55,7 @@ class Weapon(Item):
     def __init__(self, x: int, y: int, strength_bonus: int, name: str = "Sword"):
         super().__init__(name, x, y)
         self.strength_bonus = strength_bonus
-        self.char = '/'
+        self.char = ')'
         self.color = (200, 200, 100)
 
     def pick_up(self, player):
