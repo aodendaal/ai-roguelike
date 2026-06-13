@@ -18,6 +18,8 @@ from items import Gold, Potion, Weapon, AmuletOfYendor
 class TileType(Enum):
     WALL = 0
     FLOOR = 1
+    CLOSED_DOOR = 2
+    OPEN_DOOR = 3
 
 
 @dataclass
@@ -103,6 +105,27 @@ class Dungeon:
 
             self.rooms.append(new_room)
 
+        # Place doors at some room exits (where tunnels intersect room boundaries)
+        for room in self.rooms:
+            exits = []
+            # Left and right walls
+            for y in range(room.y1 + 1, room.y2):
+                if self.tiles[y][room.x1] == TileType.FLOOR:
+                    exits.append((room.x1, y))
+                if self.tiles[y][room.x2] == TileType.FLOOR:
+                    exits.append((room.x2, y))
+            # Top and bottom walls
+            for x in range(room.x1 + 1, room.x2):
+                if self.tiles[room.y1][x] == TileType.FLOOR:
+                    exits.append((x, room.y1))
+                if self.tiles[room.y2][x] == TileType.FLOOR:
+                    exits.append((x, room.y2))
+
+            for exit_x, exit_y in exits:
+                # Place doors at approximately 50% of the room exits
+                if random.random() < 0.5:
+                    self.tiles[exit_y][exit_x] = TileType.CLOSED_DOOR
+
         # Place player in first room
         if self.rooms:
             self.player_spawn = self.rooms[0].center
@@ -153,4 +176,4 @@ class Dungeon:
         """Check if a position is walkable"""
         if not (0 <= x < self.width and 0 <= y < self.height):
             return False
-        return self.tiles[y][x] == TileType.FLOOR
+        return self.tiles[y][x] in (TileType.FLOOR, TileType.OPEN_DOOR)

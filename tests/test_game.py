@@ -284,4 +284,38 @@ def test_player_death_saves_score(monkeypatch):
     assert saved_entries[0]["outcome"] == "died"
 
 
+def test_player_opens_door():
+    """Test that a player moving into a CLOSED_DOOR opens it"""
+    from dungeon import TileType
+    from constants import MAP_WIDTH, MAP_HEIGHT
+    
+    game = Game()
+    game.state = GameState.PLAYING
+    game.dungeon = Dungeon(MAP_WIDTH, MAP_HEIGHT)
+    
+    # Initialize visible/explored arrays
+    import numpy as np
+    game.visible = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    game.explored = np.zeros((MAP_HEIGHT, MAP_WIDTH), dtype=bool)
+    
+    # Set player position
+    game.player.x, game.player.y = 5, 5
+    
+    # Put a closed door to the right of the player
+    game.dungeon.tiles[5][6] = TileType.CLOSED_DOOR
+    
+    # Try to move player right
+    game.move_player(1, 0)
+    
+    # Verify player did not move (still at (5, 5))
+    assert game.player.x == 5
+    assert game.player.y == 5
+    
+    # Verify the door is now open
+    assert game.dungeon.tiles[5][6] == TileType.OPEN_DOOR
+    
+    # Verify message was logged
+    assert "You open the door." in game.message_log
+
+
 

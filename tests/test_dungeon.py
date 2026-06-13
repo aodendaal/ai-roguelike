@@ -173,3 +173,27 @@ class TestDungeon:
             # This is a basic check - there should be floor tiles
             floor_count = sum(1 for row in dungeon.tiles for tile in row if tile == TileType.FLOOR)
             assert floor_count > 0
+
+    def test_is_walkable_doors(self):
+        """Test walkability on doors"""
+        dungeon = Dungeon(20, 20)
+        
+        # Place doors manually
+        dungeon.tiles[5][5] = TileType.CLOSED_DOOR
+        dungeon.tiles[6][6] = TileType.OPEN_DOOR
+        
+        assert not dungeon.is_walkable(5, 5)  # Closed door should not be walkable
+        assert dungeon.is_walkable(6, 6)      # Open door should be walkable
+
+    def test_door_generation(self):
+        """Test that generate() places some doors"""
+        import random
+        # Set a seed to ensure consistent door generation for the test
+        random.seed(42)
+        
+        dungeon = Dungeon(80, 45)
+        dungeon.generate(1)
+        
+        # Verify that there are some closed doors generated
+        door_count = sum(1 for row in dungeon.tiles for tile in row if tile == TileType.CLOSED_DOOR)
+        assert door_count > 0

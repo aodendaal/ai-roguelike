@@ -11,7 +11,7 @@ from constants import (
     DUNGEON_DEPTH, FOV_RADIUS
 )
 from entities import Player
-from dungeon import Dungeon
+from dungeon import Dungeon, TileType
 from leaderboard import Leaderboard
 
 class GameState(Enum):
@@ -154,6 +154,12 @@ class Game:
         new_y = self.player.y + dy
 
         if not self.dungeon.is_walkable(new_x, new_y):
+            # Check for closed door
+            if (0 <= new_x < self.dungeon.width and 0 <= new_y < self.dungeon.height and
+                    self.dungeon.tiles[new_y][new_x] == TileType.CLOSED_DOOR):
+                self.dungeon.tiles[new_y][new_x] = TileType.OPEN_DOOR
+                self.add_message("You open the door.")
+                self.update_game()
             return
 
         # Check for monsters
@@ -264,14 +270,23 @@ class Game:
             # Draw map
             for y in range(MAP_HEIGHT):
                 for x in range(MAP_WIDTH):
+                    tile = self.dungeon.tiles[y][x]
                     if self.visible[y, x]:
-                        if self.dungeon.tiles[y][x].value == 0:  # Wall
+                        if tile == TileType.WALL:
                             self.console.print(x, y, '#', (100, 100, 100))
+                        elif tile == TileType.CLOSED_DOOR:
+                            self.console.print(x, y, '+', (139, 90, 43))
+                        elif tile == TileType.OPEN_DOOR:
+                            self.console.print(x, y, '/', (139, 90, 43))
                         else:  # Floor
                             self.console.print(x, y, '.', (150, 150, 150))
                     elif self.explored[y, x]:
-                        if self.dungeon.tiles[y][x].value == 0:  # Wall
+                        if tile == TileType.WALL:
                             self.console.print(x, y, '#', (50, 50, 50))
+                        elif tile == TileType.CLOSED_DOOR:
+                            self.console.print(x, y, '+', (80, 50, 25))
+                        elif tile == TileType.OPEN_DOOR:
+                            self.console.print(x, y, '/', (80, 50, 25))
                         else:  # Floor
                             self.console.print(x, y, '.', (80, 80, 80))
 
