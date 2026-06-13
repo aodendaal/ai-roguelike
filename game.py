@@ -333,14 +333,34 @@ class Game:
             death_cause=self.death_cause
         )
 
+    def load_tileset(self):
+        """Try to load custom tileset, fall back to default if not available"""
+        try:
+            import pathlib
+            tileset_path = pathlib.Path(__file__).parent / "roguelike_tileset.png"
+            if tileset_path.exists():
+                return tcod.tileset.load_tilesheet(
+                    tileset_path, 32, 8, tcod.tileset.CHARMAP_TCOD
+                )
+        except Exception as e:
+            print(f"Could not load custom tileset: {e}")
+        return None
+
     def run(self):
         """Main game loop"""
-        with tcod.context.new(
-            columns=SCREEN_WIDTH,
-            rows=SCREEN_HEIGHT,
-            title="Roguelike Dungeon",
-            vsync=True,
-        ) as self.context:
+        tileset = self.load_tileset()
+        
+        # Use custom tileset if loaded, otherwise default
+        ctx_kwargs = {
+            "columns": SCREEN_WIDTH,
+            "rows": SCREEN_HEIGHT,
+            "title": "Roguelike Dungeon",
+            "vsync": True,
+        }
+        if tileset:
+            ctx_kwargs["tileset"] = tileset
+        
+        with tcod.context.new(**ctx_kwargs) as self.context:
             self.new_game()
 
             while True:
