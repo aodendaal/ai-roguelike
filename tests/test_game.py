@@ -433,8 +433,8 @@ def test_character_life_status_screen():
     
     # Quaff the potion
     mock_quaff_events = [
-        tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False),
-        tcod.event.KeyDown(sym=tcod.event.KeySym.a, scancode=0, mod=0, repeat=False)
+        tcod.event.KeyDown(sym=tcod.event.KeySym.Q, scancode=0, mod=0, repeat=False),
+        tcod.event.KeyDown(sym=tcod.event.KeySym.A, scancode=0, mod=0, repeat=False)
     ]
     from unittest.mock import patch
     with patch("tcod.event.get", return_value=mock_quaff_events):
@@ -462,19 +462,19 @@ def test_inventory_and_quaff_menus(monkeypatch):
     game.state = GameState.PLAYING
     
     # 1. Test opening inventory menu
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.I, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     assert game.state == GameState.INVENTORY
     
     # 2. Test closing inventory menu with 'i'
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.I, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     assert game.state == GameState.PLAYING
     
     # 3. Test opening inventory and closing with Escape
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.i, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.I, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     assert game.state == GameState.INVENTORY
@@ -485,7 +485,7 @@ def test_inventory_and_quaff_menus(monkeypatch):
     assert game.state == GameState.PLAYING
     
     # 4. Test opening quaff menu and closing with Escape
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.Q, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     assert game.state == GameState.QUAFF_MENU
@@ -496,13 +496,13 @@ def test_inventory_and_quaff_menus(monkeypatch):
     assert game.state == GameState.PLAYING
     
     # 5. Test trying to quaff with an empty inventory
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.q, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.Q, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     assert game.state == GameState.QUAFF_MENU
     
     # Press 'a' (index 0) which is empty/invalid
-    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.a, scancode=0, mod=0, repeat=False)]
+    mock_events = [tcod.event.KeyDown(sym=tcod.event.KeySym.A, scancode=0, mod=0, repeat=False)]
     monkeypatch.setattr(tcod.event, "get", lambda: mock_events)
     game.process_events()
     # State should remain in QUAFF_MENU because selection was invalid

@@ -104,7 +104,7 @@ class TestWeapon:
         assert weapon.y == 10
         assert weapon.strength_bonus == 3
         assert weapon.name == "Sword"
-        assert weapon.char == '/'
+        assert weapon.char == ')'
         assert weapon.color == (200, 200, 100)
 
     def test_weapon_default_name(self):

@@ -622,15 +622,15 @@ class Game:
                             self.add_message("No stairs here!")
                     elif event.sym == tcod.event.KeySym.COMMA:
                         self.pickup_item()
-                    elif event.sym == tcod.event.KeySym.i:
+                    elif event.sym == tcod.event.KeySym.I:
                         self.state = GameState.INVENTORY
-                    elif event.sym == tcod.event.KeySym.q:
+                    elif event.sym == tcod.event.KeySym.Q:
                         self.state = GameState.QUAFF_MENU
                     self.update_game()
                     
             elif self.state == GameState.INVENTORY:
                 if isinstance(event, tcod.event.KeyDown):
-                    if event.sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.i):
+                    if event.sym in (tcod.event.KeySym.ESCAPE, tcod.event.KeySym.I):
                         self.state = GameState.PLAYING
                         
             elif self.state == GameState.QUAFF_MENU:
@@ -639,8 +639,8 @@ class Game:
                         self.state = GameState.PLAYING
                     else:
                         key_char = None
-                        if tcod.event.KeySym.a <= event.sym <= tcod.event.KeySym.z:
-                            key_char = chr(ord('a') + (event.sym - tcod.event.KeySym.a))
+                        if tcod.event.KeySym.A <= event.sym <= tcod.event.KeySym.Z:
+                            key_char = chr(ord('a') + (event.sym - tcod.event.KeySym.A))
                         
                         if key_char:
                             idx = ord(key_char) - ord('a')

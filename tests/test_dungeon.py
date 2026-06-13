@@ -218,3 +218,20 @@ class TestDungeon:
             assert has_potion, f"Level {level} is missing a Potion!"
             assert has_gold, f"Level {level} is missing Gold!"
             assert has_weapon, f"Level {level} is missing a Weapon!"
+
+    def test_strength_potion_duration(self):
+        """Test that generated strength potions always have a duration between 50 and 100 turns"""
+        from items import Potion
+        potion_colors = {
+            ("strength", True): ("red", (255, 50, 50)),
+            ("strength", False): ("blue", (50, 50, 255)),
+            ("health", True): ("green", (50, 255, 50)),
+            ("health", False): ("yellow", (255, 255, 50)),
+        }
+        for level in range(1, 10):
+            dungeon = Dungeon(80, 45)
+            dungeon.generate(level, potion_colors)
+            for item in dungeon.items:
+                if isinstance(item, Potion) and item.stat == "strength":
+                    assert 50 <= item.duration <= 100, f"Strength potion on level {level} has invalid duration: {item.duration}"
+

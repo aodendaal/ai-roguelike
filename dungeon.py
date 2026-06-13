@@ -160,7 +160,7 @@ class Dungeon:
                     elif random.random() < 0.5:
                         stat = random.choice(["strength", "health"])
                         amount = random.choice([-2, 2, 3, 5])
-                        duration = random.randint(13, 38)
+                        duration = random.randint(50, 100) if stat == "strength" else random.randint(13, 38)
                         potion = Potion(x, y, stat, amount, duration)
                         if potion_colors:
                             color_name, rgb = potion_colors[(stat, amount > 0)]
@@ -176,7 +176,7 @@ class Dungeon:
                     elif random.random() < 0.4:
                         stat = random.choice(["strength", "health"])
                         amount = random.choice([-2, 2, 3, 5])
-                        duration = random.randint(3, 8)
+                        duration = random.randint(50, 100) if stat == "strength" else random.randint(3, 8)
                         potion = Potion(x, y, stat, amount, duration)
                         if potion_colors:
                             color_name, rgb = potion_colors[(stat, amount > 0)]
@@ -201,7 +201,10 @@ class Dungeon:
             rx, ry = get_random_pos()
             stat = random.choice(["strength", "health"])
             amount = random.choice([-2, 2, 3, 5])
-            duration = random.randint(13, 38) if level == DUNGEON_DEPTH else random.randint(3, 8)
+            if stat == "strength":
+                duration = random.randint(50, 100)
+            else:
+                duration = random.randint(13, 38) if level == DUNGEON_DEPTH else random.randint(3, 8)
             potion = Potion(rx, ry, stat, amount, duration)
             if potion_colors:
                 color_name, rgb = potion_colors[(stat, amount > 0)]
