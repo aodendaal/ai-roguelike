@@ -197,3 +197,24 @@ class TestDungeon:
         # Verify that there are some closed doors generated
         door_count = sum(1 for row in dungeon.tiles for tile in row if tile == TileType.CLOSED_DOOR)
         assert door_count > 0
+
+    def test_dungeon_always_has_minimum_items(self):
+        """Test that every level generated contains at least 1 potion, 1 gold, and 1 weapon"""
+        from items import Potion, Gold, Weapon
+        for level in range(1, 10):
+            dungeon = Dungeon(80, 45)
+            potion_colors = {
+                ("strength", True): ("red", (255, 50, 50)),
+                ("strength", False): ("blue", (50, 50, 255)),
+                ("health", True): ("green", (50, 255, 50)),
+                ("health", False): ("yellow", (255, 255, 50)),
+            }
+            dungeon.generate(level, potion_colors)
+            
+            has_potion = any(isinstance(item, Potion) for item in dungeon.items)
+            has_gold = any(isinstance(item, Gold) for item in dungeon.items)
+            has_weapon = any(isinstance(item, Weapon) for item in dungeon.items)
+            
+            assert has_potion, f"Level {level} is missing a Potion!"
+            assert has_gold, f"Level {level} is missing Gold!"
+            assert has_weapon, f"Level {level} is missing a Weapon!"

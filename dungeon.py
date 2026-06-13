@@ -186,6 +186,38 @@ class Dungeon:
                     else:
                         self.items.append(Gold(x, y, random.randint(5, 20)))
 
+        # Ensure at least 1 potion, 1 gold, and 1 weapon are generated on this level
+        has_potion = any(isinstance(item, Potion) for item in self.items)
+        has_gold = any(isinstance(item, Gold) for item in self.items)
+        has_weapon = any(isinstance(item, Weapon) for item in self.items)
+
+        def get_random_pos():
+            room = random.choice(self.rooms[1:] if len(self.rooms) > 1 else self.rooms)
+            rx = random.randint(room.x1 + 1, room.x2 - 1)
+            ry = random.randint(room.y1 + 1, room.y2 - 1)
+            return rx, ry
+
+        if not has_potion:
+            rx, ry = get_random_pos()
+            stat = random.choice(["strength", "health"])
+            amount = random.choice([-2, 2, 3, 5])
+            duration = random.randint(13, 38) if level == DUNGEON_DEPTH else random.randint(3, 8)
+            potion = Potion(rx, ry, stat, amount, duration)
+            if potion_colors:
+                color_name, rgb = potion_colors[(stat, amount > 0)]
+                potion.color_name = color_name
+                potion.color = rgb
+            self.items.append(potion)
+
+        if not has_gold:
+            rx, ry = get_random_pos()
+            self.items.append(Gold(rx, ry, random.randint(5, 20)))
+
+        if not has_weapon:
+            rx, ry = get_random_pos()
+            strength_bonus = random.randint(2, 5) if level == DUNGEON_DEPTH else random.randint(1, 3)
+            self.items.append(Weapon(rx, ry, strength_bonus))
+
     def is_walkable(self, x: int, y: int) -> bool:
         """Check if a position is walkable"""
         if not (0 <= x < self.width and 0 <= y < self.height):
