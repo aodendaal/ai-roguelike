@@ -77,6 +77,12 @@ jobs:
         run: |
           VERSION=$(python -c "import sys; sys.path.append('.'); from constants import VERSION; print(VERSION)")
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RELEASE_VERSION="${{ github.ref_name }}"
+          else
+            RELEASE_VERSION="v${VERSION}-alpha.${{ github.run_number }}"
+          fi
+          echo "release_version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
 
       - name: Download Artifacts
         uses: actions/download-artifact@v4
@@ -84,29 +90,31 @@ jobs:
           path: artifacts
 
       - name: Prepare Release Assets
+        env:
+          RELEASE_VERSION: ${{ steps.get_version.outputs.release_version }}
         run: |
           mkdir release-assets
           # Copy Silicon Mac binary
-          cp artifacts/roguelike-macos-14/roguelike release-assets/roguelike-silicon-mac
-          chmod +x release-assets/roguelike-silicon-mac
+          cp artifacts/roguelike-macos-14/roguelike "release-assets/roguelike-${RELEASE_VERSION}-silicon-mac"
+          chmod +x "release-assets/roguelike-${RELEASE_VERSION}-silicon-mac"
           # Copy Intel Mac binary
-          cp artifacts/roguelike-macos-15-intel/roguelike release-assets/roguelike-intel-mac
-          chmod +x release-assets/roguelike-intel-mac
+          cp artifacts/roguelike-macos-15-intel/roguelike "release-assets/roguelike-${RELEASE_VERSION}-intel-mac"
+          chmod +x "release-assets/roguelike-${RELEASE_VERSION}-intel-mac"
           # Copy windows binary
-          cp artifacts/roguelike-windows-latest/roguelike.exe release-assets/roguelike.exe
+          cp artifacts/roguelike-windows-latest/roguelike.exe "release-assets/roguelike-${RELEASE_VERSION}.exe"
           ls -la release-assets
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}-alpha.{1}', steps.get_version.outputs.version, github.run_number) }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('Release v{0}', steps.get_version.outputs.version) || format('v{0}-alpha.{1}', steps.get_version.outputs.version, github.run_number) }}
+          tag_name: ${{ steps.get_version.outputs.release_version }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && format('Release {0}', steps.get_version.outputs.release_version) || steps.get_version.outputs.release_version }}
           draft: false
           prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
           files: |
-            release-assets/roguelike-silicon-mac
-            release-assets/roguelike-intel-mac
-            release-assets/roguelike.exe
+            release-assets/roguelike-${{ steps.get_version.outputs.release_version }}-silicon-mac
+            release-assets/roguelike-${{ steps.get_version.outputs.release_version }}-intel-mac
+            release-assets/roguelike-${{ steps.get_version.outputs.release_version }}.exe
           body: |
             Automatically compiled executables for macOS and Windows.
             
